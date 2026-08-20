@@ -347,4 +347,15 @@ model PhoneOtpToken {
   @@index([otp])
 }
 
+model SystemConfig {
+  key       String   @id
+  value     String
+  category  String   @default("GENERAL")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([category])
+}
+
+
 

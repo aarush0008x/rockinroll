@@ -1,4 +1,5 @@
 import { getAppUrl } from '@/lib/utils'
+import { getSystemConfig } from '@/lib/config'
 
 export interface SendWhatsAppOptions {
   to: string
@@ -11,11 +12,11 @@ export async function sendWhatsAppMessage({ to, message }: SendWhatsAppOptions) 
     cleanPhone = '91' + cleanPhone
   }
 
-  const whatsappApiKey = process.env.WHATSAPP_API_KEY
-  const whatsappPhoneId = process.env.WHATSAPP_PHONE_ID
+  const whatsappApiKey = await getSystemConfig('WHATSAPP_API_KEY')
+  const whatsappPhoneId = await getSystemConfig('WHATSAPP_PHONE_ID')
 
   // 1. WhatsApp Cloud API
-  if (whatsappApiKey && whatsappPhoneId && whatsappApiKey !== 'your_whatsapp_key') {
+  if (whatsappApiKey && whatsappPhoneId && !whatsappApiKey.startsWith('your_')) {
     try {
       const res = await fetch(`https://graph.facebook.com/v18.0/${whatsappPhoneId}/messages`, {
         method: 'POST',
@@ -41,8 +42,8 @@ export async function sendWhatsAppMessage({ to, message }: SendWhatsAppOptions) 
   }
 
   // 2. UltraMsg / Webhook Fallback
-  const ultraMsgInstance = process.env.ULTRAMSG_INSTANCE_ID
-  const ultraMsgToken = process.env.ULTRAMSG_TOKEN
+  const ultraMsgInstance = await getSystemConfig('ULTRAMSG_INSTANCE_ID')
+  const ultraMsgToken = await getSystemConfig('ULTRAMSG_TOKEN')
 
   if (ultraMsgInstance && ultraMsgToken) {
     try {

@@ -1,14 +1,5 @@
 import crypto from 'crypto'
-
-const APP_ID = process.env.CASHFREE_APP_ID || 'TEST_APP_ID'
-const SECRET_KEY = process.env.CASHFREE_SECRET_KEY || 'TEST_SECRET_KEY'
-const WEBHOOK_SECRET = process.env.CASHFREE_WEBHOOK_SECRET || 'TEST_WEBHOOK_SECRET'
-const ENVIRONMENT = process.env.CASHFREE_ENVIRONMENT || 'PROD'
-
-const BASE_URL =
-  ENVIRONMENT === 'PROD'
-    ? 'https://api.cashfree.com/pg'
-    : 'https://sandbox.cashfree.com/pg'
+import { getSystemConfig } from './config'
 
 const API_VERSION = '2023-08-01'
 
@@ -25,6 +16,15 @@ interface CashfreeOrderRequest {
 }
 
 export async function createCashfreeOrder(req: CashfreeOrderRequest) {
+  const appId = await getSystemConfig('CASHFREE_APP_ID')
+  const secretKey = await getSystemConfig('CASHFREE_SECRET_KEY')
+  const environment = await getSystemConfig('CASHFREE_ENVIRONMENT', 'CASHFREE_ENVIRONMENT') || 'PROD'
+
+  const baseUrl =
+    environment === 'PROD'
+      ? 'https://api.cashfree.com/pg'
+      : 'https://sandbox.cashfree.com/pg'
+
   const body = {
     order_id: req.orderId,
     order_amount: req.orderAmount,
@@ -42,7 +42,7 @@ export async function createCashfreeOrder(req: CashfreeOrderRequest) {
   }
 
   // If live keys are not configured yet, return a mock session
-  if (!process.env.CASHFREE_APP_ID || process.env.CASHFREE_APP_ID === 'your_cashfree_app_id') {
+  if (!appId || appId === 'your_cashfree_app_id' || appId === 'TEST_APP_ID') {
     return {
       cf_order_id: `CF_${Date.now()}`,
       order_id: req.orderId,
@@ -54,13 +54,13 @@ export async function createCashfreeOrder(req: CashfreeOrderRequest) {
     }
   }
 
-  const response = await fetch(`${BASE_URL}/orders`, {
+  const response = await fetch(`${baseUrl}/orders`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-version': API_VERSION,
-      'x-client-id': APP_ID,
-      'x-client-secret': SECRET_KEY,
+      'x-client-id': appId,
+      'x-client-secret': secretKey,
     },
     body: JSON.stringify(body),
   })
@@ -76,12 +76,14 @@ export async function createCashfreeOrder(req: CashfreeOrderRequest) {
 export function verifyCashfreeWebhook(
   rawBody: string,
   signature: string,
-  timestamp: string
+  timestamp: string,
+  webhookSecret?: string
 ): boolean {
   try {
+    const secret = webhookSecret || process.env.CASHFREE_WEBHOOK_SECRET || process.env.CASHFREE_SECRET_KEY || 'TEST_SECRET'
     const signedPayload = `${timestamp}${rawBody}`
     const expectedSignature = crypto
-      .createHmac('sha256', WEBHOOK_SECRET)
+      .createHmac('sha256', secret)
       .update(signedPayload)
       .digest('base64')
     return crypto.timingSafeEqual(

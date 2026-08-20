@@ -3,6 +3,7 @@
  */
 
 import { getAppUrl } from '@/lib/utils'
+import { getSystemConfig } from '@/lib/config'
 
 export interface EmailRecipient {
   email: string
@@ -17,13 +18,13 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions) {
-  const resendApiKey = process.env.RESEND_API_KEY
-  const brevoApiKey = process.env.BREVO_API_KEY
-  const senderEmail = process.env.RESEND_FROM_EMAIL || process.env.BREVO_SENDER_EMAIL || 'orders@rockinroll.in'
-  const senderName = process.env.RESEND_FROM_NAME || process.env.BREVO_SENDER_NAME || 'RockinRoll Gourmet Rolls'
+  const resendApiKey = await getSystemConfig('RESEND_API_KEY')
+  const brevoApiKey = await getSystemConfig('BREVO_API_KEY')
+  const senderEmail = (await getSystemConfig('RESEND_FROM_EMAIL')) || 'orders@rockinroll.in'
+  const senderName = 'RockinRoll Gourmet Rolls'
 
   // 1. Primary: Resend API (https://resend.com)
-  if (resendApiKey && resendApiKey !== 'your_resend_api_key_here') {
+  if (resendApiKey && !resendApiKey.startsWith('your_') && !resendApiKey.startsWith('re_your_')) {
     try {
       console.log(`[RESEND SENDING] To: ${options.to.map((t) => t.email).join(', ')} | From: ${senderName} <${senderEmail}>`)
       const res = await fetch('https://api.resend.com/emails', {

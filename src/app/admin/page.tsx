@@ -46,6 +46,68 @@ export default function AdminDashboardPage() {
     showNotification('success', `Copied to clipboard!`)
   }
 
+  
+  // Live Settings & API Keys State
+  const [settingsForm, setSettingsForm] = useState<Record<string, string>>({
+    CASHFREE_APP_ID: '',
+    CASHFREE_SECRET_KEY: '',
+    CASHFREE_ENVIRONMENT: 'PROD',
+    RESEND_API_KEY: '',
+    RESEND_FROM_EMAIL: 'orders@rockinroll.in',
+    BREVO_API_KEY: '',
+    BREVO_SENDER_EMAIL: 'rockinroll@gmail.com',
+    WHATSAPP_API_KEY: '',
+    WHATSAPP_PHONE_ID: '',
+    ULTRAMSG_INSTANCE_ID: '',
+    ULTRAMSG_TOKEN: '',
+  })
+  const [loadingSettings, setLoadingSettings] = useState(false)
+  const [savingSection, setSavingSection] = useState<string | null>(null)
+
+  const fetchSettings = async () => {
+    try {
+      setLoadingSettings(true)
+      const res = await fetch('/api/admin/settings')
+      const json = await res.json()
+      if (json.success && json.data) {
+        const loaded: Record<string, string> = {}
+        for (const [k, v] of Object.entries(json.data as Record<string, any>)) {
+          loaded[k] = v.value || ''
+        }
+        setSettingsForm((prev) => ({ ...prev, ...loaded }))
+      }
+    } finally {
+      setLoadingSettings(false)
+    }
+  }
+
+  const handleSaveSettings = async (keysToSave: string[], sectionName: string) => {
+    try {
+      setSavingSection(sectionName)
+      const payload: Record<string, string> = {}
+      for (const k of keysToSave) {
+        payload[k] = settingsForm[k] || ''
+      }
+
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json()
+      if (json.success) {
+        showNotification('success', `${sectionName} credentials saved to database!`)
+        fetchSettings()
+      } else {
+        showNotification('error', json.error || 'Failed to save credentials')
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'Error saving settings')
+    } finally {
+      setSavingSection(null)
+    }
+  }
+
   const [analytics, setAnalytics] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(true)
 
@@ -123,6 +185,7 @@ export default function AdminDashboardPage() {
     if (activeTab === 'USERS') fetchUsers()
     if (activeTab === 'ORDERS') fetchOrders()
     if (activeTab === 'COUPONS') fetchCoupons()
+    if (activeTab === 'INTEGRATIONS') fetchSettings()
   }, [activeTab])
 
   
@@ -1477,19 +1540,28 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/*       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* TAB: INTEGRATIONS & SERVICE SETUP GUIDES */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {activeTab === 'INTEGRATIONS' && (
         <div className="space-y-8">
-          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200/80 shadow-sm space-y-1">
-            <div className="flex items-center gap-2">
-              <Key className="w-6 h-6 text-[#BE3144]" />
-              <h2 className="text-xl font-black text-[#22092C]">Live Integrations & Platform Configuration</h2>
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Key className="w-6 h-6 text-[#BE3144]" />
+                <h2 className="text-xl font-black text-[#22092C]">Live Integrations & API Keys Setup</h2>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Configure Cashfree Payments, Transactional Emails, WhatsApp Cloud API & Business Email routing directly from the Admin console
+              </p>
             </div>
-            <p className="text-xs text-neutral-500">
-              Manage Cashfree Payments, Transactional Emails (Resend/Brevo), WhatsApp Cloud API & Official Domain Email Setup
-            </p>
+
+            <button
+              onClick={fetchSettings}
+              className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-xs font-bold text-neutral-700 flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingSettings ? 'animate-spin' : ''}`} /> Refresh Keys
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1502,17 +1574,57 @@ export default function AdminDashboardPage() {
                     <DollarSign className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-base text-[#22092C]">Cashfree Payments</h3>
-                    <p className="text-[11px] text-neutral-500">UPI, Cards, Google Pay & NetBanking</p>
+                    <h3 className="font-extrabold text-base text-[#22092C]">Cashfree Payments Setup</h3>
+                    <p className="text-[11px] text-neutral-500">Live UPI, Cards, Google Pay & NetBanking</p>
                   </div>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
-                  Connected
+                  {settingsForm.CASHFREE_APP_ID ? 'Configured' : 'Live Mode'}
                 </span>
               </div>
 
-              <div className="space-y-3 text-xs">
-                <div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSaveSettings(['CASHFREE_APP_ID', 'CASHFREE_SECRET_KEY', 'CASHFREE_ENVIRONMENT'], 'Cashfree')
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-neutral-700 uppercase">Environment</label>
+                  <select
+                    value={settingsForm.CASHFREE_ENVIRONMENT || 'PROD'}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, CASHFREE_ENVIRONMENT: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-bold text-[#1A1A1A] focus:ring-[#BE3144]"
+                  >
+                    <option value="PROD">Production (Live Payments)</option>
+                    <option value="SANDBOX">Sandbox (Test Mode)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-neutral-700 uppercase">Cashfree App ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 123456789abcdef..."
+                    value={settingsForm.CASHFREE_APP_ID || ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, CASHFREE_APP_ID: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A] focus:ring-[#BE3144]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-neutral-700 uppercase">Cashfree Secret Key</label>
+                  <input
+                    type="password"
+                    placeholder="cfsk_ma_prod_..."
+                    value={settingsForm.CASHFREE_SECRET_KEY || ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, CASHFREE_SECRET_KEY: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A] focus:ring-[#BE3144]"
+                  />
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[11px] font-extrabold uppercase text-neutral-500 block mb-1">
                     Webhook Endpoint (Paste in Cashfree Dashboard):
                   </label>
@@ -1524,6 +1636,7 @@ export default function AdminDashboardPage() {
                       className="w-full p-2.5 bg-neutral-50 font-mono text-[11px] rounded-xl border border-neutral-200 text-neutral-800"
                     />
                     <button
+                      type="button"
                       onClick={() => copyToClipboard('https://rockinroll.in/api/payments/cashfree/webhook', 'cashfree')}
                       className="px-3 py-2.5 bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl text-xs font-bold"
                     >
@@ -1532,18 +1645,17 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#872341]/20 space-y-2">
-                  <p className="font-bold text-[#22092C]">⚙️ Environment Variables Required (.env / Vercel):</p>
-                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-neutral-700 font-mono">
-                    <li>CASHFREE_APP_ID="your_cashfree_app_id"</li>
-                    <li>CASHFREE_SECRET_KEY="your_cashfree_secret"</li>
-                    <li>CASHFREE_ENVIRONMENT="PROD"</li>
-                  </ul>
-                </div>
-              </div>
+                <button
+                  type="submit"
+                  disabled={savingSection === 'Cashfree'}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black text-xs uppercase tracking-wider shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  {savingSection === 'Cashfree' ? 'Saving to Database...' : '💾 Save Cashfree Keys'}
+                </button>
+              </form>
             </div>
 
-            {/* 2. TRANSACTIONAL EMAIL (RESEND / BREVO) */}
+            {/* 2. TRANSACTIONAL EMAIL (RESEND & BREVO) */}
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
                 <div className="flex items-center gap-3">
@@ -1551,7 +1663,7 @@ export default function AdminDashboardPage() {
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-base text-[#22092C]">Email Service (Resend & Brevo)</h3>
+                    <h3 className="font-extrabold text-base text-[#22092C]">Email Setup (Resend / Brevo)</h3>
                     <p className="text-[11px] text-neutral-500">Sign Up OTPs, Password Resets & Order Status</p>
                   </div>
                 </div>
@@ -1560,22 +1672,53 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
 
-              <div className="space-y-3 text-xs">
-                <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
-                  <p className="text-[11px] text-neutral-500 font-bold uppercase">Official Verified Sender:</p>
-                  <p className="font-bold text-[#22092C] text-sm">orders@rockinroll.in</p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSaveSettings(['RESEND_API_KEY', 'RESEND_FROM_EMAIL', 'BREVO_API_KEY'], 'Email')
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-neutral-700 uppercase">
+                    Resend API Key (<a href="https://resend.com/api-keys" target="_blank" className="text-[#BE3144] underline">resend.com</a>)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="re_123456789_abcdef..."
+                    value={settingsForm.RESEND_API_KEY || ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, RESEND_API_KEY: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A] focus:ring-[#BE3144]"
+                  />
                 </div>
 
-                <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#872341]/20 space-y-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-neutral-700 uppercase">Verified From Email</label>
+                  <input
+                    type="email"
+                    placeholder="orders@rockinroll.in"
+                    value={settingsForm.RESEND_FROM_EMAIL || 'orders@rockinroll.in'}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, RESEND_FROM_EMAIL: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-bold text-xs text-[#1A1A1A] focus:ring-[#BE3144]"
+                  />
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#FFF8F5] border border-[#872341]/20 space-y-1.5 text-[11px]">
                   <p className="font-bold text-[#22092C]">🌐 DNS Configuration for rockinroll.in:</p>
-                  <p className="text-[11px] text-neutral-600">
-                    Add the SPF TXT record in Cloudflare DNS for 100% deliverability directly to customer inboxes:
-                  </p>
+                  <p className="text-neutral-600">SPF TXT Record for Cloudflare:</p>
                   <div className="p-2 bg-white rounded-lg font-mono text-[10px] text-neutral-800 border border-neutral-200">
                     v=spf1 include:resend.com ~all
                   </div>
                 </div>
-              </div>
+
+                <button
+                  type="submit"
+                  disabled={savingSection === 'Email'}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#22092C] to-[#351044] text-white font-black text-xs uppercase tracking-wider shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  {savingSection === 'Email' ? 'Saving to Database...' : '💾 Save Email Keys'}
+                </button>
+              </form>
             </div>
 
             {/* 3. WHATSAPP BUSINESS NOTIFICATIONS */}
@@ -1586,40 +1729,98 @@ export default function AdminDashboardPage() {
                     <MessageSquare className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-base text-[#22092C]">WhatsApp Business Notifications</h3>
+                    <h3 className="font-extrabold text-base text-[#22092C]">WhatsApp Business API Keys</h3>
                     <p className="text-[11px] text-neutral-500">Live order confirmations, rider map link & OTPs</p>
                   </div>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
-                  Integrated
+                  Active
                 </span>
               </div>
 
-              <div className="space-y-4 text-xs">
-                <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-3">
-                  <p className="font-bold text-emerald-900">📲 Live WhatsApp Test Dispatcher:</p>
-                  <div className="flex items-center gap-2">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSaveSettings(['WHATSAPP_PHONE_ID', 'WHATSAPP_API_KEY', 'ULTRAMSG_INSTANCE_ID', 'ULTRAMSG_TOKEN'], 'WhatsApp')
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-neutral-700 uppercase">
+                    WhatsApp Phone Number ID (<a href="https://developers.facebook.com" target="_blank" className="text-[#25D366] underline">Meta Cloud API</a>)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 104829104810294"
+                    value={settingsForm.WHATSAPP_PHONE_ID || ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, WHATSAPP_PHONE_ID: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A] focus:ring-[#25D366]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-neutral-700 uppercase">
+                    Meta WhatsApp Permanent Access Token
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="EAA..."
+                    value={settingsForm.WHATSAPP_API_KEY || ''}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, WHATSAPP_API_KEY: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A] focus:ring-[#25D366]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase">UltraMsg Instance (Optional)</label>
                     <input
-                      type="tel"
-                      placeholder="Enter 10-digit mobile number"
-                      value={testPhone}
-                      onChange={(e) => setTestPhone(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-neutral-300 text-xs font-bold text-[#1A1A1A]"
+                      type="text"
+                      placeholder="instance12345"
+                      value={settingsForm.ULTRAMSG_INSTANCE_ID || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, ULTRAMSG_INSTANCE_ID: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A]"
                     />
-                    <button
-                      onClick={handleSendTestWhatsApp}
-                      disabled={testingWhatsApp || testPhone.length < 10}
-                      className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-black text-xs whitespace-nowrap disabled:opacity-50"
-                    >
-                      {testingWhatsApp ? 'Sending...' : 'Send Test OTP'}
-                    </button>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-neutral-600 uppercase">UltraMsg Token (Optional)</label>
+                    <input
+                      type="password"
+                      placeholder="token..."
+                      value={settingsForm.ULTRAMSG_TOKEN || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, ULTRAMSG_TOKEN: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A]"
+                    />
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-1.5 text-[11px] text-neutral-600">
-                  <p className="font-bold text-neutral-800">Supported WhatsApp Providers:</p>
-                  <p>1. <strong>Meta WhatsApp Cloud API</strong>: Set <code className="text-[#BE3144]">WHATSAPP_PHONE_ID</code> and <code className="text-[#BE3144]">WHATSAPP_API_KEY</code></p>
-                  <p>2. <strong>UltraMsg Webhook</strong>: Set <code className="text-[#BE3144]">ULTRAMSG_INSTANCE_ID</code> and <code className="text-[#BE3144]">ULTRAMSG_TOKEN</code></p>
+                <button
+                  type="submit"
+                  disabled={savingSection === 'WhatsApp'}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] text-white font-black text-xs uppercase tracking-wider shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  {savingSection === 'WhatsApp' ? 'Saving to Database...' : '💾 Save WhatsApp Keys'}
+                </button>
+              </form>
+
+              {/* Test WhatsApp sender */}
+              <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-2 pt-3">
+                <p className="font-bold text-emerald-900 text-xs">📲 Test WhatsApp Dispatcher:</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="tel"
+                    placeholder="Enter 10-digit mobile number"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 text-xs font-bold text-[#1A1A1A]"
+                  />
+                  <button
+                    onClick={handleSendTestWhatsApp}
+                    disabled={testingWhatsApp || testPhone.length < 10}
+                    className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-black text-xs whitespace-nowrap disabled:opacity-50"
+                  >
+                    {testingWhatsApp ? 'Sending...' : 'Send Test OTP'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1648,12 +1849,13 @@ export default function AdminDashboardPage() {
                     <li>Go to <strong>Cloudflare Dashboard ➔ rockinroll.in ➔ Email Routing</strong>.</li>
                     <li>Add destination address: <code className="font-bold">rockinroll779@gmail.com</code> and verify in Gmail.</li>
                     <li>Create rule for <code className="font-bold">support@rockinroll.in</code> ➔ Forward to <code className="font-bold">rockinroll779@gmail.com</code>.</li>
+                    <li>Create rule for <code className="font-bold">orders@rockinroll.in</code> ➔ Forward to <code className="font-bold">rockinroll779@gmail.com</code>.</li>
                     <li>Click <strong>"Add missing DNS records automatically"</strong>.</li>
                   </ol>
                 </div>
 
-                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-[11px] text-neutral-600">
-                  💡 All emails sent to <strong className="text-[#22092C]">support@rockinroll.in</strong> will automatically arrive inside your personal Gmail inbox instantly.
+                <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 text-[11px] text-neutral-600">
+                  💡 All emails sent to <strong className="text-[#22092C]">support@rockinroll.in</strong> and <strong className="text-[#22092C]">orders@rockinroll.in</strong> will automatically arrive inside your personal Gmail inbox instantly with zero fees.
                 </div>
               </div>
             </div>
@@ -1662,204 +1864,7 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {/* MODAL: ADD / EDIT PRODUCT */}
-      {/* ─────────────────────────────────────────────────────────────────── */}
-      {showAddProductModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
-              <h3 className="text-xl font-black text-[#22092C]">
-                {editingProduct ? `Edit ${editingProduct.name}` : 'Add New Gourmet Roll / Item'}
-              </h3>
-              <button
-                onClick={() => setShowAddProductModal(false)}
-                className="p-2 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveProduct} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700">Item Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Malai Chicken Tikka Roll"
-                    value={prodForm.name}
-                    onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700">Category *</label>
-                  <select
-                    required
-                    value={prodForm.categoryId}
-                    onChange={(e) => setProdForm({ ...prodForm, categoryId: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 font-bold text-[#22092C]"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-neutral-700">Description *</label>
-                <textarea
-                  required
-                  rows={2}
-                  placeholder="Appetizing description of spices, marinade, and rolling paratha..."
-                  value={prodForm.description}
-                  onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })}
-                  className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] text-[#1A1A1A]"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700">Regular Price (₹) *</label>
-                  <input
-                    type="number"
-                    step="1"
-                    required
-                    placeholder="249"
-                    value={prodForm.price}
-                    onChange={(e) => setProdForm({ ...prodForm, price: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700">Discounted Price (₹)</label>
-                  <input
-                    type="number"
-                    step="1"
-                    placeholder="219 (Optional)"
-                    value={prodForm.discountPrice}
-                    onChange={(e) => setProdForm({ ...prodForm, discountPrice: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700">Prep Time (Mins)</label>
-                  <input
-                    type="number"
-                    value={prodForm.preparationTime}
-                    onChange={(e) => setProdForm({ ...prodForm, preparationTime: parseInt(e.target.value) || 10 })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-neutral-700">Image URL</label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={prodForm.imageUrl}
-                  onChange={(e) => setProdForm({ ...prodForm, imageUrl: e.target.value })}
-                  className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] text-[#1A1A1A]"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700">Ingredients (comma-separated)</label>
-                  <input
-                    type="text"
-                    placeholder="Chicken, Butter, Mozzarella, Paratha"
-                    value={prodForm.ingredients}
-                    onChange={(e) => setProdForm({ ...prodForm, ingredients: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] text-[#1A1A1A]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-neutral-700">Allergens (comma-separated)</label>
-                  <input
-                    type="text"
-                    placeholder="Dairy, Gluten, Eggs"
-                    value={prodForm.allergens}
-                    onChange={(e) => setProdForm({ ...prodForm, allergens: e.target.value })}
-                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] text-[#1A1A1A]"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 bg-[#FFF8F5] p-3 rounded-2xl border border-neutral-200">
-                <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={prodForm.isVeg}
-                    onChange={(e) => setProdForm({ ...prodForm, isVeg: e.target.checked })}
-                    className="rounded text-green-600 focus:ring-green-600"
-                  />
-                  <span>Pure Veg</span>
-                </label>
-
-                <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={prodForm.isAvailable}
-                    onChange={(e) => setProdForm({ ...prodForm, isAvailable: e.target.checked })}
-                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
-                  />
-                  <span>In Stock</span>
-                </label>
-
-                <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={prodForm.isBestSeller}
-                    onChange={(e) => setProdForm({ ...prodForm, isBestSeller: e.target.checked })}
-                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
-                  />
-                  <span>Bestseller</span>
-                </label>
-
-                <label className="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={prodForm.isFeatured}
-                    onChange={(e) => setProdForm({ ...prodForm, isFeatured: e.target.checked })}
-                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
-                  />
-                  <span>Featured</span>
-                </label>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-neutral-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddProductModal(false)}
-                  className="flex-1 py-3 rounded-xl border border-neutral-300 text-xs font-bold hover:bg-neutral-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white text-xs font-black shadow-lg hover:brightness-110"
-                >
-                  {editingProduct ? 'Update Product' : 'Create Product'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-
-      {/* ─────────────────────────────────────────────────────────────────── */}
+{/* ─────────────────────────────────────────────────────────────────── */}
       {/* MODAL: ADD / EDIT PROMO COUPON */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {showAddCouponModal && (
