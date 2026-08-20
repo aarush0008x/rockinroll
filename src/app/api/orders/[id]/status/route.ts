@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/security'
 import { prisma } from '@/lib/db'
 import { sendOrderStatusEmail } from '@/lib/email'
+import {
+  sendWhatsAppOrderConfirmed,
+  sendWhatsAppOutForDelivery,
+  sendWhatsAppOrderDelivered,
+} from '@/lib/whatsapp'
 
 export async function PATCH(
   req: NextRequest,
@@ -92,6 +97,24 @@ export async function PATCH(
     sendOrderStatusEmail(order, status).catch((err) => {
       console.error('Failed to send status email:', err)
     })
+
+    // Trigger WhatsApp notification asynchronously
+    const targetPhone = order.address?.phone || order.user?.phone
+    if (targetPhone) {
+      if (status === 'CONFIRMED') {
+        sendWhatsAppOrderConfirmed(targetPhone, order).catch((err) =>
+          console.error('[WHATSAPP CONFIRMED ERROR]', err)
+        )
+      } else if (status === 'OUT_FOR_DELIVERY') {
+        sendWhatsAppOutForDelivery(targetPhone, order, auth.user.name || 'Delivery Hero').catch((err) =>
+          console.error('[WHATSAPP OUT_FOR_DELIVERY ERROR]', err)
+        )
+      } else if (status === 'DELIVERED') {
+        sendWhatsAppOrderDelivered(targetPhone, order).catch((err) =>
+          console.error('[WHATSAPP DELIVERED ERROR]', err)
+        )
+      }
+    }
 
     return NextResponse.json({ success: true, data: order })
   } catch (error: any) {

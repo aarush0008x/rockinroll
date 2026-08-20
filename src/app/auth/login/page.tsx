@@ -91,10 +91,26 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black text-xs uppercase tracking-wider shadow-xl hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Signing in...' : 'Sign In with Email'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
+
+        <div className="relative flex items-center justify-center">
+          <div className="border-t border-neutral-200 w-full" />
+          <span className="bg-white px-3 text-[11px] font-extrabold uppercase text-neutral-400 tracking-wider">
+            OR
+          </span>
+          <div className="border-t border-neutral-200 w-full" />
+        </div>
+
+        <Link
+          href="/auth/phone"
+          className="w-full py-3 rounded-2xl border-2 border-emerald-500/30 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 font-extrabold text-xs flex items-center justify-center gap-2.5 transition-all"
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Login via WhatsApp & Mobile OTP</span>
+        </Link>
 
         <div className="text-center text-xs text-neutral-600 font-semibold pt-2 border-t border-neutral-100">
           Don't have an account?{' '}

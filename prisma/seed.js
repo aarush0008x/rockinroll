@@ -354,6 +354,14 @@ async function main() {
       maxDiscount: 50,
       isActive: true,
     },
+    {
+      id: 'CGC50',
+      discountType: 'FLAT',
+      value: 50,
+      minOrderAmount: 149,
+      maxDiscount: 50,
+      isActive: true,
+    },
   ]
 
   for (const c of coupons) {

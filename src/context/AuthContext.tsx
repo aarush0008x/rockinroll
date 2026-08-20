@@ -8,12 +8,15 @@ export interface User {
   email: string
   phone?: string
   role: 'CUSTOMER' | 'DELIVERY_PARTNER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN'
+  loyaltyPoints?: number
+  referralCode?: string
 }
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>
+  loginWithPhone: (phone: string, otp: string, name?: string) => Promise<{ success: boolean; error?: string }>
   register: (name: string, email: string, pass: string, phone?: string, role?: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
@@ -63,6 +66,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const loginWithPhone = async (phone: string, otp: string, name?: string) => {
+    try {
+      const res = await fetch('/api/auth/phone/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp, name }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setUser(json.user)
+        return { success: true }
+      }
+      return { success: false, error: json.error }
+    } catch (e: any) {
+      return { success: false, error: e.message || 'Phone verification failed' }
+    }
+  }
+
   const register = async (name: string, email: string, pass: string, phone?: string, role?: string) => {
     try {
       const res = await fetch('/api/auth/register', {
@@ -91,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser: fetchCurrentUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithPhone, register, logout, refreshUser: fetchCurrentUser }}>
       {children}
     </AuthContext.Provider>
   )

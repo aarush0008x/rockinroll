@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { ChefHat, Check, RefreshCw, Plus, Clock, AlertTriangle, Flame, Phone, CheckCircle2 } from 'lucide-react'
+import { ChefHat, Check, RefreshCw, Plus, Clock, AlertTriangle, Flame, Phone, CheckCircle2, Volume2, VolumeX, Printer } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 export default function StaffKitchenPage() {
@@ -14,10 +14,51 @@ export default function StaffKitchenPage() {
   const [activeFilter, setActiveFilter] = useState<'ACTIVE' | 'READY' | 'ALL'>('ACTIVE')
   const [creatingTest, setCreatingTest] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [printingOrder, setPrintingOrder] = useState<any | null>(null)
+  const previousPendingCount = useRef<number>(0)
 
   const showToast = (msg: string) => {
     setFeedback(msg)
     setTimeout(() => setFeedback(null), 3500)
+  }
+
+  // Web Audio Kitchen Bell Synthesizer (Works reliably in all browsers)
+  const playKitchenBell = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+
+      // Primary Chime Tone
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(1046.5, ctx.currentTime) // C6
+      osc.frequency.exponentialRampToValueAtTime(523.25, ctx.currentTime + 0.6) // C5
+      gain.gain.setValueAtTime(0.4, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.6)
+
+      // Echo bell strike
+      setTimeout(() => {
+        try {
+          const osc2 = ctx.createOscillator()
+          const gain2 = ctx.createGain()
+          osc2.type = 'sine'
+          osc2.frequency.setValueAtTime(1318.5, ctx.currentTime) // E6
+          gain2.gain.setValueAtTime(0.25, ctx.currentTime)
+          gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+          osc2.connect(gain2)
+          gain2.connect(ctx.destination)
+          osc2.start()
+          osc2.stop(ctx.currentTime + 0.5)
+        } catch {}
+      }, 150)
+    } catch {}
   }
 
   useEffect(() => {
@@ -36,6 +77,20 @@ export default function StaffKitchenPage() {
       const json = await res.json()
       if (json.success) {
         setOrders(json.data)
+        
+        // Count unacknowledged incoming orders
+        const pendingOrders = json.data.filter((o: any) =>
+          ['PENDING', 'PLACED', 'CONFIRMED'].includes(o.status)
+        )
+
+        // If new pending order arrived and sound enabled, ring the kitchen bell!
+        if (pendingOrders.length > previousPendingCount.current && previousPendingCount.current >= 0) {
+          if (soundEnabled) {
+            playKitchenBell()
+            showToast(`🔔 New Order Alert! (${pendingOrders.length} waiting)`)
+          }
+        }
+        previousPendingCount.current = pendingOrders.length
       }
     } finally {
       setLoading(false)
@@ -64,6 +119,7 @@ export default function StaffKitchenPage() {
       const json = await res.json()
       if (json.success) {
         showToast(`🔥 New Live Order ${json.data.shortCode} placed!`)
+        if (soundEnabled) playKitchenBell()
         fetchKitchenOrders()
       }
     } finally {
@@ -71,7 +127,14 @@ export default function StaffKitchenPage() {
     }
   }
 
-  // Filter orders - Include PENDING, PLACED, CONFIRMED, PREPARING in active kitchen prep
+  const handlePrintKOT = (order: any) => {
+    setPrintingOrder(order)
+    setTimeout(() => {
+      window.print()
+    }, 150)
+  }
+
+  // Filter orders
   const activeOrders = orders.filter((o) => ['PENDING', 'PLACED', 'CONFIRMED', 'PREPARING'].includes(o.status))
   const readyOrders = orders.filter((o) => o.status === 'READY')
   const allActiveOrders = orders.filter((o) => !['DELIVERED', 'CANCELLED'].includes(o.status))
@@ -89,11 +152,65 @@ export default function StaffKitchenPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      
       {/* Toast */}
       {feedback && (
         <div className="fixed top-24 right-6 z-50 p-4 rounded-2xl shadow-2xl bg-emerald-600 text-white text-xs font-black flex items-center gap-2 animate-slide-up">
           <CheckCircle2 className="w-4 h-4" />
           <span>{feedback}</span>
+        </div>
+      )}
+
+      {/* Printable KOT Thermal Receipt (Hidden on screen, visible during window.print) */}
+      {printingOrder && (
+        <div className="hidden print:block fixed inset-0 bg-white text-black p-4 text-xs font-mono">
+          <div className="w-[80mm] max-w-full mx-auto space-y-2 border-b-2 border-black pb-2 text-center">
+            <h2 className="text-base font-black tracking-wider">ROCKINROLL KITCHEN</h2>
+            <p className="text-[10px]">CGC UNIVERSITY, MOHALI • HOT & FRESH</p>
+            <p className="text-[11px] font-bold">KITCHEN ORDER TICKET (KOT)</p>
+          </div>
+
+          <div className="w-[80mm] max-w-full mx-auto py-2 border-b border-dashed border-black text-[11px] space-y-1">
+            <div className="flex justify-between font-black text-sm">
+              <span>ORDER: {printingOrder.shortCode}</span>
+              <span>{printingOrder.orderType || 'DELIVERY'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Time: {new Date(printingOrder.createdAt).toLocaleTimeString()}</span>
+              <span>Status: {printingOrder.status}</span>
+            </div>
+            <p className="font-bold">Customer: {printingOrder.user?.name} ({printingOrder.user?.phone || 'No Phone'})</p>
+          </div>
+
+          <div className="w-[80mm] max-w-full mx-auto py-2 border-b-2 border-black space-y-2">
+            <p className="font-black text-[11px] uppercase tracking-wider">ITEMS TO PREPARE:</p>
+            {printingOrder.items?.map((item: any, idx: number) => (
+              <div key={idx} className="space-y-0.5">
+                <div className="flex justify-between font-bold text-xs">
+                  <span>{item.quantity}x {item.name}</span>
+                  <span>₹{item.price * item.quantity}</span>
+                </div>
+                {item.addons?.length > 0 && (
+                  <div className="pl-3 text-[10px] text-neutral-800">
+                    {item.addons.map((a: any, aIdx: number) => (
+                      <div key={aIdx}>+ {a.name}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {printingOrder.notes && (
+            <div className="w-[80mm] max-w-full mx-auto py-2 border-b border-dashed border-black font-bold text-[10px]">
+              ⚠️ Special Instructions: {printingOrder.notes}
+            </div>
+          )}
+
+          <div className="w-[80mm] max-w-full mx-auto pt-2 flex justify-between font-black text-xs">
+            <span>TOTAL AMOUNT:</span>
+            <span>₹{printingOrder.grandTotal}</span>
+          </div>
         </div>
       )}
 
@@ -108,18 +225,44 @@ export default function StaffKitchenPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Live KDS Sync Active
             </div>
             <h1 className="text-xl sm:text-2xl font-black">Kitchen Display Monitor</h1>
-            <p className="text-xs text-neutral-300">Live order queue, prep timers & order advancement</p>
+            <p className="text-xs text-neutral-300">Live order queue, audible chime & 1-click KOT thermal printing</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto flex-wrap">
+          {/* Audio Chime Toggle */}
+          <button
+            onClick={() => {
+              setSoundEnabled(!soundEnabled)
+              if (!soundEnabled) playKitchenBell()
+            }}
+            className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow ${
+              soundEnabled
+                ? 'bg-amber-500 hover:bg-amber-400 text-neutral-950'
+                : 'bg-white/10 text-neutral-400 hover:bg-white/20'
+            }`}
+            title="Toggle Kitchen Order Chime"
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span>{soundEnabled ? 'Chime ON' : 'Muted'}</span>
+          </button>
+
+          <button
+            onClick={playKitchenBell}
+            className="px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold"
+            title="Test Kitchen Sound"
+          >
+            🔔 Test Bell
+          </button>
+
           <button
             onClick={handleCreateMockOrder}
             disabled={creatingTest}
-            className="flex-1 sm:flex-initial px-4 py-2.5 bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white text-xs font-black rounded-xl flex items-center justify-center gap-1.5 shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50"
+            className="px-4 py-2.5 bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white text-xs font-black rounded-xl flex items-center justify-center gap-1.5 shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50"
           >
-            <Plus className="w-4 h-4" /> {creatingTest ? 'Placing...' : '+ Create Test Live Order'}
+            <Plus className="w-4 h-4" /> {creatingTest ? 'Placing...' : '+ Mock Order'}
           </button>
+
           <button
             onClick={fetchKitchenOrders}
             className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold flex items-center gap-1.5"
@@ -205,7 +348,7 @@ export default function StaffKitchenPage() {
                 key={order.id}
                 className={`bg-white rounded-3xl p-6 border-2 shadow-lg flex flex-col justify-between space-y-5 transition-all ${
                   isPendingOrConfirmed
-                    ? 'border-amber-400 bg-amber-50/15'
+                    ? 'border-amber-400 bg-amber-50/15 animate-pulse'
                     : isPrep
                     ? 'border-[#BE3144] bg-[#FFF8F5]'
                     : isReady
@@ -223,19 +366,29 @@ export default function StaffKitchenPage() {
                       </p>
                     </div>
 
-                    <span
-                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        isPendingOrConfirmed
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                          : isPrep
-                          ? 'bg-[#BE3144] text-white'
-                          : isReady
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      {order.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePrintKOT(order)}
+                        className="p-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors"
+                        title="Print Kitchen Order Ticket (KOT)"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+
+                      <span
+                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          isPendingOrConfirmed
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : isPrep
+                            ? 'bg-[#BE3144] text-white'
+                            : isReady
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-blue-600 text-white'
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Customer Info */}
@@ -248,30 +401,33 @@ export default function StaffKitchenPage() {
                   </div>
 
                   {/* Special Note */}
-                  {order.specialInstructions && (
-                    <div className="p-3 bg-amber-100/80 border border-amber-200 rounded-2xl text-xs text-amber-950 font-bold flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-                      <span>Note: {order.specialInstructions}</span>
+                  {order.notes && (
+                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2 text-xs text-amber-900 font-bold">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600 mt-0.5" />
+                      <span>Note: {order.notes}</span>
                     </div>
                   )}
 
-                  {/* Items List */}
-                  <div className="space-y-2.5">
+                  {/* Items list */}
+                  <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
                     {order.items?.map((item: any) => (
-                      <div key={item.id} className="p-3 bg-neutral-50 rounded-2xl border border-neutral-200/70">
-                        <div className="flex justify-between items-center text-sm font-black text-[#22092C]">
-                          <span className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-lg bg-[#22092C] text-white text-xs flex items-center justify-center font-black">
+                      <div key={item.id} className="p-3 rounded-2xl bg-neutral-50 border border-neutral-100 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-[#22092C]">
+                            <span className="inline-block px-1.5 py-0.5 bg-[#BE3144] text-white rounded-md text-[10px] font-black mr-1.5">
                               {item.quantity}x
                             </span>
-                            <span>{item.name}</span>
+                            {item.name}
+                          </span>
+                          <span className="font-extrabold text-xs text-neutral-700">
+                            {formatPrice(item.price * item.quantity)}
                           </span>
                         </div>
 
-                        {item.addons?.length > 0 && (
-                          <div className="mt-1.5 pl-8 space-y-0.5">
+                        {item.addons && item.addons.length > 0 && (
+                          <div className="pl-6 space-y-0.5">
                             {item.addons.map((a: any) => (
-                              <p key={a.id} className="text-xs font-bold text-[#BE3144]">
+                              <p key={a.id} className="text-[10px] font-semibold text-[#872341]">
                                 + {a.name}
                               </p>
                             ))}
@@ -282,55 +438,32 @@ export default function StaffKitchenPage() {
                   </div>
                 </div>
 
-                {/* Status Advancement Buttons */}
-                <div className="space-y-2 pt-2 border-t border-neutral-100">
+                {/* Status Advancement Action Buttons */}
+                <div className="pt-2 border-t border-neutral-100 space-y-2">
                   {isPendingOrConfirmed && (
                     <button
                       onClick={() => updateOrderStatus(order.id, 'PREPARING', order.shortCode)}
-                      className="w-full py-3.5 bg-gradient-to-r from-[#BE3144] to-[#F05941] hover:brightness-110 text-white text-xs font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-[#BE3144] hover:bg-[#872341] text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow transition-all flex items-center justify-center gap-2"
                     >
-                      <Flame className="w-4 h-4" /> Start Rolling (PREPARING)
+                      <Flame className="w-4 h-4" /> Start Preparing / On Grill
                     </button>
                   )}
 
                   {isPrep && (
                     <button
                       onClick={() => updateOrderStatus(order.id, 'READY', order.shortCode)}
-                      className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow transition-all flex items-center justify-center gap-2"
                     >
-                      <Check className="w-4 h-4" /> Mark Packed & Ready for Rider
+                      <Check className="w-4 h-4" /> Mark Packed & Ready
                     </button>
                   )}
 
                   {isReady && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, 'OUT_FOR_DELIVERY', order.shortCode)}
-                      className="w-full py-3.5 bg-[#22092C] hover:bg-[#351044] text-white text-xs font-black rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2"
-                    >
-                      <span>Handed to Delivery Partner</span>
-                    </button>
+                    <div className="text-center p-2.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-extrabold flex items-center justify-center gap-1.5 border border-emerald-200">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Ready in Dispatch Bay for Rider</span>
+                    </div>
                   )}
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => router.push(`/orders/${order.shortCode}`)}
-                      className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl"
-                    >
-                      View Live Tracker
-                    </button>
-                    {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
-                      <button
-                        onClick={() => {
-                          if (confirm(`Cancel order ${order.shortCode}?`)) {
-                            updateOrderStatus(order.id, 'CANCELLED', order.shortCode)
-                          }
-                        }}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl border border-red-200"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
                 </div>
               </div>
             )

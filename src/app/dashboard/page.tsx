@@ -55,6 +55,43 @@ export default function CustomerDashboardPage() {
         </button>
       </div>
 
+      {/* RollPoints & Rewards Widget */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-2 border-amber-500/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="px-3 py-1 rounded-full bg-amber-500 text-neutral-950 font-black text-[10px] uppercase tracking-wider">
+              🪙 RollPoints™ Loyalty
+            </span>
+            <span className="text-xs font-bold text-neutral-600">100 pts = ₹50 OFF</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-black text-[#22092C]">{user?.loyaltyPoints ?? 100}</span>
+            <span className="text-xs font-extrabold text-amber-700">Available Points</span>
+          </div>
+          <p className="text-xs text-neutral-600">
+            Earn 1 RollPoint for every ₹10 spent on authentic Kathi rolls and fusion bowls. Redeemable automatically on checkout!
+          </p>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-[#BE3144]/10 to-[#F05941]/10 border-2 border-[#BE3144]/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="px-3 py-1 rounded-full bg-[#BE3144] text-white font-black text-[10px] uppercase tracking-wider">
+              🎟️ Campus Referral Code
+            </span>
+            <span className="text-xs font-bold text-neutral-600">CGC Special</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="px-4 py-2 bg-white rounded-xl border border-neutral-300 font-mono font-black text-sm text-[#22092C] tracking-wider">
+              {user?.referralCode || 'CGC50'}
+            </div>
+            <span className="text-xs font-bold text-[#BE3144]">Give ₹50, Get ₹50</span>
+          </div>
+          <p className="text-xs text-neutral-600">
+            Friends get Flat ₹50 OFF with code <strong className="text-[#22092C]">CGC50</strong> on orders above ₹149!
+          </p>
+        </div>
+      </div>
+
       <div className="space-y-4">
         <h2 className="text-xl font-black text-[#22092C]">Your Order History</h2>
 
