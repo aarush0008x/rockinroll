@@ -65,9 +65,14 @@ export async function POST(req: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
     const verificationLink = `${appUrl}/auth/verify?email=${encodeURIComponent(user.email)}&code=${code}`
-    sendAccountVerificationEmail(user.email, user.name, code, verificationLink).catch((err) => {
-      console.error('Failed to send verification email:', err)
-    })
+    
+    console.log(`[REGISTER] Dispatching verification OTP to ${user.email}`)
+    try {
+      const emailResult = await sendAccountVerificationEmail(user.email, user.name, code, verificationLink)
+      console.log(`[REGISTER] Email dispatch result:`, emailResult)
+    } catch (err) {
+      console.error('[REGISTER] Failed to send verification email:', err)
+    }
 
     const familyId = generateFamilyId()
     const userAgent = req.headers.get('user-agent') || 'Unknown'

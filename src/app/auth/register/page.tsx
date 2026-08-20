@@ -23,7 +23,7 @@ export default function RegisterPage() {
 
     const res = await register(name, email, password, phone)
     if (res.success) {
-      router.push('/menu')
+      router.push(`/auth/verify?email=${encodeURIComponent(email)}`)
     } else {
       setError(res.error || 'Registration failed')
       setLoading(false)
