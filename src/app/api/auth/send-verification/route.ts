@@ -34,7 +34,9 @@ export async function POST(req: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
     const verificationLink = `${appUrl}/auth/verify?email=${encodeURIComponent(email)}&code=${code}`
 
-    await sendAccountVerificationEmail(email, user.name, code, verificationLink)
+    console.log(`[VERIFICATION] Dispatching OTP email to ${email}`)
+    const emailResult = await sendAccountVerificationEmail(email, user.name, code, verificationLink)
+    console.log(`[VERIFICATION] Email dispatch result:`, emailResult)
 
     return NextResponse.json({
       success: true,

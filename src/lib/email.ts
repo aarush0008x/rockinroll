@@ -23,10 +23,11 @@ export async function sendEmail(options: SendEmailOptions) {
   // 1. Primary: Resend API (https://resend.com)
   if (resendApiKey && resendApiKey !== 'your_resend_api_key_here') {
     try {
+      console.log(`[RESEND SENDING] To: ${options.to.map((t) => t.email).join(', ')} | From: ${senderName} <${senderEmail}>`)
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${resendApiKey}`,
+          Authorization: `Bearer ${resendApiKey.trim()}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -40,13 +41,14 @@ export async function sendEmail(options: SendEmailOptions) {
 
       const data = await res.json()
       if (!res.ok) {
-        console.error('Resend API Error:', data)
+        console.error('[RESEND ERROR]', JSON.stringify(data))
         return { success: false, error: data.message || 'Failed to send email via Resend' }
       }
 
+      console.log('[RESEND SUCCESS]', JSON.stringify(data))
       return { success: true, provider: 'resend', data }
     } catch (error: any) {
-      console.error('Resend email exception:', error)
+      console.error('[RESEND EXCEPTION]', error)
       return { success: false, error: error.message }
     }
   }

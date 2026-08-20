@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({ where: { email } })
     if (!user) {
-      // Don't leak user existence for security
+      console.warn(`[FORGOT PASSWORD] No user found with email: ${email}`)
       return NextResponse.json({
         success: true,
         message: 'If an account exists with this email, a password reset link has been sent.',
@@ -34,7 +34,9 @@ export async function POST(req: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
     const resetLink = `${appUrl}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
 
-    await sendPasswordResetEmail(email, user.name, resetLink)
+    console.log(`[FORGOT PASSWORD] Dispatching reset email to ${email}`)
+    const emailResult = await sendPasswordResetEmail(email, user.name, resetLink)
+    console.log(`[FORGOT PASSWORD] Email dispatch result:`, emailResult)
 
     return NextResponse.json({
       success: true,
