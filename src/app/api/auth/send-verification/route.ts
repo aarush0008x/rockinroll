@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendAccountVerificationEmail } from '@/lib/email'
+import { getAppUrl } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
+    const appUrl = getAppUrl()
     const verificationLink = `${appUrl}/auth/verify?email=${encodeURIComponent(email)}&code=${code}`
 
     console.log(`[VERIFICATION] Dispatching OTP email to ${email}`)

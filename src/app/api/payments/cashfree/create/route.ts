@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/security'
 import { prisma } from '@/lib/db'
 import { createCashfreeOrder } from '@/lib/payment'
+import { getAppUrl } from '@/lib/utils'
 
 export async function POST(req: NextRequest) {
   const auth = requireAuth(req)
@@ -9,6 +10,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const { orderId } = await req.json()
+    if (!orderId) {
+      return NextResponse.json({ success: false, error: 'Order ID is required' }, { status: 400 })
+    }
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -23,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
+    const appUrl = getAppUrl()
 
     const cfOrder = await createCashfreeOrder({
       orderId: order.shortCode,

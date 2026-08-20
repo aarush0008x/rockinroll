@@ -2,6 +2,8 @@
  * Transactional Email Service for RockinRoll (Powered by Resend & Brevo)
  */
 
+import { getAppUrl } from '@/lib/utils'
+
 export interface EmailRecipient {
   email: string
   name?: string
@@ -203,7 +205,7 @@ export async function sendPasswordResetEmail(
 export async function sendOrderStatusEmail(order: any, newStatus: string) {
   const customerEmail = order.user?.email
   const customerName = order.user?.name || 'Valued Customer'
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
+  const appUrl = getAppUrl()
   const trackerLink = `${appUrl}/orders/${order.shortCode}`
 
   if (!customerEmail) return { success: false, error: 'No customer email' }

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { issueTokenPair, generateFamilyId } from '@/lib/auth'
 import { rateLimit, rateLimitResponse, setAuthCookies } from '@/lib/security'
 import { sendAccountVerificationEmail } from '@/lib/email'
+import { getAppUrl } from '@/lib/utils'
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
+    const appUrl = getAppUrl()
     const verificationLink = `${appUrl}/auth/verify?email=${encodeURIComponent(user.email)}&code=${code}`
     
     console.log(`[REGISTER] Dispatching verification OTP to ${user.email}`)

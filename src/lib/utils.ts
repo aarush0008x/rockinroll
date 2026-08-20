@@ -57,3 +57,11 @@ export function apiSuccess<T>(data: T, status: number = 200) {
 export function apiError(message: string, status: number = 400) {
   return Response.json({ success: false, error: message }, { status })
 }
+
+export function getAppUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (envUrl && !envUrl.includes('vercel.app') && !envUrl.includes('localhost') && envUrl.startsWith('http')) {
+    return envUrl.replace(/\/$/, '')
+  }
+  return 'https://rockinroll.in'
+}
