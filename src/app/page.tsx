@@ -5,20 +5,34 @@ import { ProductCard } from '@/components/ProductCard'
 import { prisma } from '@/lib/db'
 import { Flame, Clock, Award, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 async function getLandingData() {
   try {
-    const featured = await prisma.product.findMany({
-      where: { isAvailable: true, isFeatured: true },
-      include: { addons: true },
-      take: 6,
-    })
-
+    // 1. Real-time categories created and managed by admin
     const categories = await prisma.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
     })
+
+    // 2. Real-time Chef's Picks (isFeatured items marked by admin)
+    let featured = await prisma.product.findMany({
+      where: { isAvailable: true, isFeatured: true },
+      include: { addons: true, category: true },
+      orderBy: [{ isBestSeller: 'desc' }, { rating: 'desc' }],
+      take: 6,
+    })
+
+    // Fallback if admin has not marked any products as featured yet
+    if (!featured || featured.length === 0) {
+      featured = await prisma.product.findMany({
+        where: { isAvailable: true },
+        include: { addons: true, category: true },
+        orderBy: [{ isBestSeller: 'desc' }, { rating: 'desc' }],
+        take: 6,
+      })
+    }
 
     return { featured, categories }
   } catch (error) {
