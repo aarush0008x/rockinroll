@@ -184,9 +184,9 @@ export default async function HomePage() {
               <div className="w-14 h-14 rounded-2xl bg-[#F05941] flex items-center justify-center mx-auto text-white shadow-lg">
                 <Clock className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold">Midnight Delivery</h3>
+              <h3 className="text-lg font-bold">11 AM – 11 PM Delivery</h3>
               <p className="text-xs text-neutral-300 leading-relaxed">
-                Hungry at 2 AM? We keep our stoves fired up until 3:00 AM daily with thermally insulated hot delivery boxes.
+                Craving gourmet rolls? We keep our stoves fired up from 11:00 AM to 11:00 PM daily with thermally insulated hot delivery boxes.
               </p>
             </div>
 

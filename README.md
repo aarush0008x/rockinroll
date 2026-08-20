@@ -65,7 +65,7 @@ Open [http://localhost:3005](http://localhost:3005) in your browser.
 ## 📍 Contact & Kitchen HQ
 - **Location**: CGC university, Mohali
 - **Phone**: +91 95017 14559
-- **Email**: rockinroll@gmail.com
-- **Hours**: Open Daily 11:00 AM – 3:00 AM
+- **Email**: support@rockinroll.in
+- **Hours**: Open Daily 11:00 AM – 11:00 PM
 
 

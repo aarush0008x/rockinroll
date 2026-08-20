@@ -59,7 +59,7 @@ export function Footer() {
               </a>
             </p>
             <p className="text-[11px] text-neutral-400 pt-2">
-              🔥 Open Daily: 11:00 AM – 3:00 AM (Late Night Delivery)
+              🔥 Open Daily: 11:00 AM – 11:00 PM
             </p>
           </div>
         </div>
