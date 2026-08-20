@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar'
 import { CartDrawer } from '@/components/CartDrawer'
 import { Footer } from '@/components/Footer'
 import { PWAPrompt } from '@/components/PWAPrompt'
+import { RollBot } from '@/components/RollBot'
 
 export const metadata: Metadata = {
   title: 'RockinRoll — Gourmet Kathi & Fusion Rolls',
@@ -44,6 +45,7 @@ export default function RootLayout({
             <Navbar />
             <CartDrawer />
             <PWAPrompt />
+            <RollBot />
             <main className="flex-1">{children}</main>
             <Footer />
           </CartProvider>
