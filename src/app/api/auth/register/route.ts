@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
     const verificationLink = `${appUrl}/auth/verify?email=${encodeURIComponent(user.email)}&code=${code}`
     
     console.log(`[REGISTER] Dispatching verification OTP to ${user.email}`)

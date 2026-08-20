@@ -134,7 +134,7 @@ export async function sendAccountVerificationEmail(
         </div>
 
         <div style="background: #FFF8F5; padding: 18px; text-align: center; border-top: 1px solid #eee; font-size: 11px; color: #777;">
-          © ${new Date().getFullYear()} RockinRoll Food Systems Inc. • CGC university, Mohali
+          © ${new Date().getFullYear()} <a href="https://rockinroll.in" style="color: #BE3144; text-decoration: none; font-weight: bold;">rockinroll.in</a> • CGC university, Mohali
         </div>
       </div>
     </body>
@@ -184,7 +184,7 @@ export async function sendPasswordResetEmail(
         </div>
 
         <div style="background: #FFF8F5; padding: 18px; text-align: center; border-top: 1px solid #eee; font-size: 11px; color: #777;">
-          © ${new Date().getFullYear()} RockinRoll Food Systems Inc.
+          © ${new Date().getFullYear()} <a href="https://rockinroll.in" style="color: #BE3144; text-decoration: none; font-weight: bold;">rockinroll.in</a> • CGC university, Mohali
         </div>
       </div>
     </body>
@@ -203,7 +203,7 @@ export async function sendPasswordResetEmail(
 export async function sendOrderStatusEmail(order: any, newStatus: string) {
   const customerEmail = order.user?.email
   const customerName = order.user?.name || 'Valued Customer'
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
   const trackerLink = `${appUrl}/orders/${order.shortCode}`
 
   if (!customerEmail) return { success: false, error: 'No customer email' }
@@ -312,7 +312,7 @@ export async function sendOrderStatusEmail(order: any, newStatus: string) {
         </div>
 
         <div style="background: #FFF8F5; padding: 16px; text-align: center; border-top: 1px solid #eee; font-size: 11px; color: #777;">
-          Need assistance? Reply to this email or call +91 95017 14559
+          Need assistance? Reply to this email or call +91 95017 14559 • <a href="https://rockinroll.in" style="color: #BE3144; text-decoration: none; font-weight: bold;">rockinroll.in</a>
         </div>
       </div>
     </body>

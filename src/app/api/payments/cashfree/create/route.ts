@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 })
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
 
     const cfOrder = await createCashfreeOrder({
       orderId: order.shortCode,

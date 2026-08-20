@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rockinroll.in'
     const resetLink = `${appUrl}/auth/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
 
     console.log(`[FORGOT PASSWORD] Dispatching reset email to ${email}`)
