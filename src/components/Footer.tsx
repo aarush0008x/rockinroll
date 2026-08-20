@@ -67,7 +67,15 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-[#872341]/30 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-400 gap-4">
           <p>© {new Date().getFullYear()} RockinRoll Food Systems Inc. All rights reserved.</p>
           <p className="flex items-center gap-1">
-            Handcrafted with <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" /> for midnight roll lovers. With ❤️ By Aarush
+            Handcrafted with <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" /> by{' '}
+            <a
+              href="https://www.linkedin.com/in/aarush-singh-4b3a20358"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#F05941] hover:text-white font-bold underline underline-offset-2 transition-colors"
+            >
+              Aarush
+            </a>
           </p>
         </div>
       </div>
