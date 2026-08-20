@@ -312,7 +312,7 @@ export async function sendOrderStatusEmail(order: any, newStatus: string) {
         </div>
 
         <div style="background: #FFF8F5; padding: 16px; text-align: center; border-top: 1px solid #eee; font-size: 11px; color: #777;">
-          Need assistance? Reply to this email or call +91 95017 14559 • <a href="https://rockinroll.in" style="color: #BE3144; text-decoration: none; font-weight: bold;">rockinroll.in</a>
+          Need assistance? Write to <a href="mailto:support@rockinroll.in" style="color: #BE3144; font-weight: bold; text-decoration: none;">support@rockinroll.in</a> or call +91 95017 14559 • <a href="https://rockinroll.in" style="color: #BE3144; text-decoration: none; font-weight: bold;">rockinroll.in</a>
         </div>
       </div>
     </body>

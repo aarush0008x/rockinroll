@@ -50,7 +50,7 @@ export function Footer() {
               <Phone className="w-4 h-4 text-[#F05941]" /> +91 95017 14559
             </p>
             <p className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-[#F05941]" /> rockinroll@gmail.com
+              <Mail className="w-4 h-4 text-[#F05941]" /> support@rockinroll.in
             </p>
             <p className="text-[11px] text-neutral-400 pt-2">
               🔥 Open Daily: 11:00 AM – 3:00 AM (Late Night Delivery)
