@@ -8,7 +8,7 @@ import {
   DollarSign, ShoppingBag, Users, Shield, TrendingUp, RefreshCw,
   Plus, Edit, Trash2, CheckCircle, XCircle, Search, Flame,
   Check, AlertCircle, Sparkles, Filter, X, Layers, FolderPlus,
-  Truck, ChefHat, Clock, Phone, MapPin, Tag, Key, Globe, MessageSquare,
+  Truck, ChefHat, Clock, Phone, MapPin, Tag, Key, Globe, MessageSquare, Package, Activity, BarChart3, AlertTriangle,
   Send, Copy, HelpCircle, ExternalLink, Mail, CheckCheck, Smartphone, QrCode
 } from 'lucide-react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
@@ -17,7 +17,7 @@ export default function AdminDashboardPage() {
   const router = useRouter()
   const { user } = useAuth()
 
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MENU' | 'CATEGORIES' | 'COUPONS' | 'USERS' | 'ORDERS' | 'INTEGRATIONS'>('OVERVIEW')
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MENU' | 'CATEGORIES' | 'COUPONS' | 'INVENTORY' | 'USERS' | 'ORDERS' | 'INTEGRATIONS'>('OVERVIEW')
 
   // Overview data
   
@@ -108,6 +108,14 @@ export default function AdminDashboardPage() {
     }
   }
 
+  
+  // Inventory state
+  const [inventoryList, setInventoryList] = useState<any[]>([])
+  const [lowStockCount, setLowStockCount] = useState(0)
+  const [loadingInventory, setLoadingInventory] = useState(false)
+  const [editingInventoryItem, setEditingInventoryItem] = useState<any>(null)
+  const [restockQty, setRestockQty] = useState<number>(10)
+
   const [analytics, setAnalytics] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(true)
 
@@ -185,6 +193,7 @@ export default function AdminDashboardPage() {
     if (activeTab === 'USERS') fetchUsers()
     if (activeTab === 'ORDERS') fetchOrders()
     if (activeTab === 'COUPONS') fetchCoupons()
+    if (activeTab === 'INVENTORY') fetchInventory()
     if (activeTab === 'INTEGRATIONS') fetchSettings()
   }, [activeTab])
 
@@ -288,6 +297,40 @@ export default function AdminDashboardPage() {
       showNotification('error', e.message || 'WhatsApp error')
     } finally {
       setTestingWhatsApp(false)
+    }
+  }
+
+  
+  const fetchInventory = async () => {
+    try {
+      setLoadingInventory(true)
+      const res = await fetch('/api/admin/inventory')
+      const json = await res.json()
+      if (json.success) {
+        setInventoryList(json.data)
+        setLowStockCount(json.lowStockCount || 0)
+      }
+    } finally {
+      setLoadingInventory(false)
+    }
+  }
+
+  const handleUpdateStock = async (itemId: string, newQty: number, itemName: string) => {
+    try {
+      const res = await fetch('/api/admin/inventory', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: itemId, currentQty: newQty }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        showNotification('success', `Stock updated for ${itemName}: ${newQty}`)
+        fetchInventory()
+      } else {
+        showNotification('error', json.error || 'Failed to update stock')
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'Error updating stock')
     }
   }
 
@@ -754,6 +797,23 @@ export default function AdminDashboardPage() {
             <Tag className="w-3.5 h-3.5" />
             <span>Coupons ({couponsList.length || 0})</span>
           </button>
+          <button
+            onClick={() => setActiveTab('INVENTORY')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'INVENTORY'
+                ? 'bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white shadow'
+                : 'text-neutral-300 hover:text-white'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>Inventory & Rush</span>
+            {lowStockCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white text-[9px] font-black animate-pulse">
+                {lowStockCount} LOW
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('INTEGRATIONS')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
@@ -1540,7 +1600,198 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/*       {/* ─────────────────────────────────────────────────────────────────── */}
+      {/*       
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* TAB: INVENTORY STOCK ALERTS & KITCHEN RUSH HEATMAP */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'INVENTORY' && (
+        <div className="space-y-8">
+          
+          {/* Header */}
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Package className="w-6 h-6 text-[#BE3144]" />
+                <h2 className="text-xl font-black text-[#22092C]">Kitchen Inventory & Peak Rush Heatmap</h2>
+              </div>
+              <p className="text-xs text-neutral-500">
+                Monitor live ingredient stocks, receive low-threshold alerts, and plan prep shifts with hourly rush forecasts
+              </p>
+            </div>
+
+            <button
+              onClick={fetchInventory}
+              className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-xs font-bold text-neutral-700 flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingInventory ? 'animate-spin' : ''}`} /> Refresh Inventory
+            </button>
+          </div>
+
+          {/* Low stock alert banner */}
+          {lowStockCount > 0 && (
+            <div className="p-4 bg-red-50 border-2 border-red-200 rounded-3xl flex items-center justify-between gap-4 text-red-900">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-red-600 text-white flex items-center justify-center font-black">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm">Low Stock Alert Detected</h4>
+                  <p className="text-xs text-red-700">
+                    {lowStockCount} kitchen ingredient(s) have fallen below their safety threshold. Restock immediately to prevent delayed orders during peak rush.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Kitchen Peak Rush 24-Hour Forecast Heatmap */}
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-[#BE3144]" />
+                  <h3 className="font-extrabold text-base text-[#22092C]">24-Hour Kitchen Rush Intensity Heatmap</h3>
+                </div>
+                <p className="text-xs text-neutral-500">Hourly order load based on campus lunch, evening tea & late-night delivery patterns</p>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs font-bold">
+                <span className="flex items-center gap-1.5 text-neutral-500">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Normal
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-600">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Moderate
+                </span>
+                <span className="flex items-center gap-1.5 text-red-600">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Peak Rush 🔥
+                </span>
+              </div>
+            </div>
+
+            {/* Heatmap Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
+              {[
+                { hour: '11:00 AM', label: 'Opening Prep', rush: 'LOW', orders: '4-8', color: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
+                { hour: '12:00 PM', label: 'Lunch Starts', rush: 'MED', orders: '15-22', color: 'bg-amber-50 border-amber-200 text-amber-900' },
+                { hour: '01:00 PM', label: 'Campus Lunch Rush 🔥', rush: 'PEAK', orders: '35-48', color: 'bg-red-50 border-red-300 text-red-900 ring-2 ring-red-500/20' },
+                { hour: '02:00 PM', label: 'Afternoon Lunch', rush: 'PEAK', orders: '28-36', color: 'bg-red-50 border-red-300 text-red-900' },
+                { hour: '03:00 PM', label: 'Post-Lunch Rest', rush: 'LOW', orders: '6-10', color: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
+                { hour: '04:00 PM', label: 'Evening Shift In', rush: 'LOW', orders: '8-12', color: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
+                { hour: '05:00 PM', label: 'Campus Tea & Snack', rush: 'MED', orders: '20-26', color: 'bg-amber-50 border-amber-200 text-amber-900' },
+                { hour: '06:00 PM', label: 'Sunset Cravings', rush: 'MED', orders: '22-28', color: 'bg-amber-50 border-amber-200 text-amber-900' },
+                { hour: '07:00 PM', label: 'Dinner Warmup', rush: 'MED', orders: '25-32', color: 'bg-amber-50 border-amber-200 text-amber-900' },
+                { hour: '08:00 PM', label: 'Hostel Dinner Rush 🔥', rush: 'PEAK', orders: '45-60', color: 'bg-red-50 border-red-300 text-red-900 ring-2 ring-red-500/20' },
+                { hour: '09:00 PM', label: 'Prime Dinner Delivery 🔥', rush: 'PEAK', orders: '50-65', color: 'bg-red-50 border-red-300 text-red-900 ring-2 ring-red-500/20' },
+                { hour: '10:00 PM', label: 'Late Night Midnight Rush', rush: 'PEAK', orders: '38-52', color: 'bg-red-50 border-red-300 text-red-900' },
+              ].map((slot, i) => (
+                <div key={i} className={`p-3.5 rounded-2xl border ${slot.color} space-y-1`}>
+                  <div className="flex items-center justify-between font-mono font-black text-[11px]">
+                    <span>{slot.hour}</span>
+                    <span className="text-[9px] uppercase px-1.5 py-0.5 rounded-md bg-white/80 font-extrabold">{slot.rush}</span>
+                  </div>
+                  <p className="font-extrabold text-[11px] truncate">{slot.label}</p>
+                  <p className="text-[10px] opacity-80">{slot.orders} orders/hr</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Inventory Table */}
+          <div className="bg-white rounded-3xl border border-neutral-200/80 shadow-sm overflow-hidden space-y-4 p-6 sm:p-8">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-base text-[#22092C]">Live Ingredient Inventory & Thresholds</h3>
+              <span className="text-xs text-neutral-500">{inventoryList.length} tracked items</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#22092C] text-white font-extrabold uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th className="py-4 px-6">Ingredient Name</th>
+                    <th className="py-4 px-6">Category</th>
+                    <th className="py-4 px-6">Current Stock</th>
+                    <th className="py-4 px-6">Stock Level Indicator</th>
+                    <th className="py-4 px-6">Status</th>
+                    <th className="py-4 px-6 text-right">Quick Restock</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 font-medium text-neutral-700">
+                  {inventoryList.map((item) => {
+                    const isLow = item.currentQty <= item.minThreshold
+                    const pct = Math.min(100, Math.round((item.currentQty / (item.idealQty || 100)) * 100))
+
+                    return (
+                      <tr key={item.id} className="hover:bg-[#FFF8F5]/60 transition-colors">
+                        <td className="py-4 px-6">
+                          <p className="font-black text-sm text-[#22092C]">{item.name}</p>
+                          <p className="text-[10px] text-neutral-400">Min Alert: {item.minThreshold} {item.unit} | Ideal: {item.idealQty} {item.unit}</p>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="px-2.5 py-1 bg-neutral-100 rounded-lg text-[10px] font-bold text-neutral-700">
+                            {item.category}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`font-mono font-black text-sm ${isLow ? 'text-red-600' : 'text-[#22092C]'}`}>
+                            {item.currentQty} {item.unit}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 w-48">
+                          <div className="space-y-1">
+                            <div className="w-full h-2 rounded-full bg-neutral-100 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  isLow ? 'bg-red-500' : pct < 50 ? 'bg-amber-500' : 'bg-emerald-500'
+                                }`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-neutral-400 font-bold">{pct}% of ideal capacity</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              isLow
+                                ? 'bg-red-100 text-red-800 animate-pulse'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isLow ? 'bg-red-600' : 'bg-emerald-600'}`} />
+                            {isLow ? 'LOW STOCK' : 'HEALTHY'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleUpdateStock(item.id, item.currentQty + 10, item.name)}
+                              className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 text-[#22092C] font-bold text-xs rounded-lg"
+                              title="Add +10"
+                            >
+                              +10
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStock(item.id, item.idealQty, item.name)}
+                              className="px-3 py-1 bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black text-xs rounded-lg shadow hover:brightness-110"
+                              title="Restock to full capacity"
+                            >
+                              Fill to Max
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
       {/* TAB: INTEGRATIONS & SERVICE SETUP GUIDES */}
       {/* ─────────────────────────────────────────────────────────────────── */}
       {activeTab === 'INTEGRATIONS' && (

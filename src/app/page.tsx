@@ -2,6 +2,7 @@ import React from 'react'
 import Link from 'next/link'
 import { ThreeRoll } from '@/components/ThreeRoll'
 import { ProductCard } from '@/components/ProductCard'
+import { FoodieHallOfFame } from '@/components/FoodieHallOfFame'
 import { prisma } from '@/lib/db'
 import { Flame, Clock, Award, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react'
 
@@ -202,6 +203,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Foodie Hall of Fame (Photo Reviews Community) */}
+      <FoodieHallOfFame />
 
     </div>
   )
