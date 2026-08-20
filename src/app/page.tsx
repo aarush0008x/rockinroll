@@ -8,18 +8,23 @@ import { Flame, Clock, Award, ShieldCheck, ArrowRight, Sparkles } from 'lucide-r
 export const revalidate = 60
 
 async function getLandingData() {
-  const featured = await prisma.product.findMany({
-    where: { isAvailable: true, isFeatured: true },
-    include: { addons: true },
-    take: 6,
-  })
+  try {
+    const featured = await prisma.product.findMany({
+      where: { isAvailable: true, isFeatured: true },
+      include: { addons: true },
+      take: 6,
+    })
 
-  const categories = await prisma.category.findMany({
-    where: { isActive: true },
-    orderBy: { sortOrder: 'asc' },
-  })
+    const categories = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    })
 
-  return { featured, categories }
+    return { featured, categories }
+  } catch (error) {
+    console.warn('Prisma getLandingData fallback:', error)
+    return { featured: [], categories: [] }
+  }
 }
 
 export default async function HomePage() {
