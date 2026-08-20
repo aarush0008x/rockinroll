@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/context/CartContext'
 import { formatPrice, calculateTax, calculateDeliveryFee } from '@/lib/utils'
-import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Tag, CheckCircle } from 'lucide-react'
+import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight, Tag, CheckCircle, Sparkles } from 'lucide-react'
 
 export function CartDrawer() {
   const { items, isOpen, setIsOpen, updateQuantity, removeItem, clearCart, subtotal, couponCode, discountAmount, applyCoupon, removeCoupon } = useCart()
@@ -13,6 +13,18 @@ export function CartDrawer() {
   const [couponInput, setCouponInput] = useState('')
   const [couponError, setCouponError] = useState('')
   const [couponSuccess, setCouponSuccess] = useState('')
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([])
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/coupons')
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success) setAvailableCoupons(json.data)
+        })
+        .catch(() => {})
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -172,24 +184,51 @@ export function CartDrawer() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Tag className="w-4 h-4 absolute left-3 top-3 text-neutral-400" />
-                    <input
-                      type="text"
-                      placeholder="Promo Code (e.g. ROCKIN20)"
-                      value={couponInput}
-                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                      className="w-full pl-9 pr-3 py-2 text-xs uppercase font-bold tracking-wider rounded-xl border border-neutral-300 bg-white text-[#1A1A1A] placeholder:text-neutral-400 focus:outline-none focus:border-[#BE3144]"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[#22092C] text-white text-xs font-bold rounded-xl hover:bg-[#872341] transition-colors"
-                  >
-                    Apply
-                  </button>
-                </form>
+                <div className="space-y-2">
+                  <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="w-4 h-4 absolute left-3 top-3 text-neutral-400" />
+                      <input
+                        type="text"
+                        placeholder="Promo Code (e.g. CGC50)"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        className="w-full pl-9 pr-3 py-2 text-xs uppercase font-bold tracking-wider rounded-xl border border-neutral-300 bg-white text-[#1A1A1A] placeholder:text-neutral-400 focus:outline-none focus:border-[#BE3144]"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-[#22092C] text-white text-xs font-bold rounded-xl hover:bg-[#872341] transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </form>
+
+                  {/* Available Coupons Pills */}
+                  {availableCoupons.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <p className="text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">
+                        Available Coupons:
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {availableCoupons.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => applyCoupon(c.id)}
+                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-[10px] font-extrabold text-amber-900 flex items-center gap-1 transition-colors"
+                          >
+                            <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                            <span>{c.id}</span>
+                            <span className="text-neutral-500 font-normal">
+                              ({c.discountType === 'PERCENTAGE' ? `${c.value}%` : `₹${c.value}`})
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {couponError && <p className="text-xs text-red-600 font-medium">{couponError}</p>}

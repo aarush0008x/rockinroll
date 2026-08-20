@@ -38,7 +38,7 @@ export function calculateDiscount(
   if (subtotal < coupon.minOrderAmount) return 0
 
   let discount = 0
-  if (coupon.discountType === 'PERCENT') {
+  if (coupon.discountType === 'PERCENT' || coupon.discountType === 'PERCENTAGE') {
     discount = (subtotal * coupon.value) / 100
     if (coupon.maxDiscount) {
       discount = Math.min(discount, coupon.maxDiscount)

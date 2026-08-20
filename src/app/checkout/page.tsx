@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useCart } from '@/context/CartContext'
 import { formatPrice, calculateTax, calculateDeliveryFee } from '@/lib/utils'
-import { MapPin, Plus, CreditCard, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react'
+import { MapPin, Plus, CreditCard, ShieldCheck, AlertCircle, ArrowRight, Tag, Sparkles, CheckCircle } from 'lucide-react'
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const { items, subtotal, discountAmount, couponCode, clearCart } = useCart()
+  const { items, subtotal, discountAmount, couponCode, applyCoupon, removeCoupon, clearCart } = useCart()
 
   const [addresses, setAddresses] = useState<any[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string>('')
@@ -19,6 +19,20 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'CASHFREE' | 'COD'>('CASHFREE')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([])
+  const [redeemPoints, setRedeemPoints] = useState(false)
+  const [customCouponInput, setCustomCouponInput] = useState('')
+  const [couponError, setCouponError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/coupons')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setAvailableCoupons(json.data)
+      })
+      .catch(() => {})
+  }, [])
 
   const [newAddr, setNewAddr] = useState({
     name: user?.name || '',
@@ -69,9 +83,11 @@ export default function CheckoutPage() {
     } catch {}
   }
 
-  const tax = calculateTax(subtotal - discountAmount)
+  const pointsDiscount = redeemPoints && user?.loyaltyPoints ? Math.floor(user.loyaltyPoints * 0.1) : 0
+  const effectiveDiscount = discountAmount + pointsDiscount
+  const tax = calculateTax(subtotal - effectiveDiscount)
   const deliveryFee = calculateDeliveryFee(subtotal)
-  const grandTotal = Math.max(0, subtotal - discountAmount + tax + deliveryFee)
+  const grandTotal = Math.max(0, subtotal - effectiveDiscount + tax + deliveryFee)
 
   const handlePlaceOrder = async () => {
     if (items.length === 0) {
@@ -142,6 +158,19 @@ export default function CheckoutPage() {
       setError(e.message || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleApplyCustomCoupon = async (codeToApply?: string) => {
+    const targetCode = codeToApply || customCouponInput
+    setCouponError('')
+    if (!targetCode.trim()) return
+
+    const res = await applyCoupon(targetCode.trim())
+    if (res.success) {
+      setCustomCouponInput('')
+    } else {
+      setCouponError(res.error || 'Failed to apply coupon')
     }
   }
 
@@ -367,10 +396,10 @@ export default function CheckoutPage() {
         </div>
 
         <div className="lg:col-span-5">
-          <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-xl space-y-6 sticky top-28">
+          <div className="bg-white p-6 rounded-3xl border border-neutral-200/80 shadow-xl space-y-5 sticky top-28">
             <h3 className="text-base font-black text-[#22092C]">Order Summary</h3>
 
-            <div className="space-y-3 max-h-60 overflow-y-auto">
+            <div className="space-y-3 max-h-52 overflow-y-auto">
               {items.map((item) => (
                 <div key={item.id} className="flex justify-between text-xs">
                   <div>
@@ -388,6 +417,89 @@ export default function CheckoutPage() {
               ))}
             </div>
 
+            {/* 🪙 RollPoints Loyalty Redemption (100 pts = ₹10) */}
+            {user && (user.loyaltyPoints ?? 0) > 0 && (
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-center justify-between">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-amber-950">
+                  <input
+                    type="checkbox"
+                    checked={redeemPoints}
+                    onChange={(e) => setRedeemPoints(e.target.checked)}
+                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
+                  />
+                  <span>🪙 Redeem {user.loyaltyPoints} RollPoints</span>
+                </label>
+                <span className="text-xs font-black text-amber-800">
+                  Save {formatPrice(Math.floor((user.loyaltyPoints || 0) * 0.1))}
+                </span>
+              </div>
+            )}
+
+            {/* Promo Coupon Application */}
+            {couponCode ? (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                  <span>Coupon `{couponCode}` applied! (-{formatPrice(discountAmount)})</span>
+                </div>
+                <button
+                  onClick={removeCoupon}
+                  className="text-xs text-red-600 hover:underline font-bold"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Tag className="w-4 h-4 absolute left-3 top-3 text-neutral-400" />
+                    <input
+                      type="text"
+                      placeholder="Promo Code (e.g. CGC50)"
+                      value={customCouponInput}
+                      onChange={(e) => setCustomCouponInput(e.target.value.toUpperCase())}
+                      className="w-full pl-9 pr-3 py-2 text-xs uppercase font-bold tracking-wider rounded-xl border border-neutral-300 bg-white text-[#1A1A1A] placeholder:text-neutral-400 focus:outline-none focus:border-[#BE3144]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyCustomCoupon()}
+                    className="px-4 py-2 bg-[#22092C] text-white text-xs font-bold rounded-xl hover:bg-[#872341] transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+
+                {couponError && <p className="text-xs text-red-600 font-medium">{couponError}</p>}
+
+                {/* Available Coupons Pills */}
+                {availableCoupons.length > 0 && (
+                  <div className="space-y-1 pt-1">
+                    <p className="text-[10px] font-extrabold uppercase text-neutral-400 tracking-wider">
+                      Available Coupons:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableCoupons.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleApplyCustomCoupon(c.id)}
+                          className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg text-[10px] font-extrabold text-amber-900 flex items-center gap-1 transition-colors"
+                        >
+                          <Sparkles className="w-2.5 h-2.5 text-amber-600" />
+                          <span>{c.id}</span>
+                          <span className="text-neutral-500 font-normal">
+                            ({c.discountType === 'PERCENTAGE' ? `${c.value}%` : `₹${c.value}`})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2 text-xs text-neutral-600 border-t border-neutral-100 pt-4">
               <div className="flex justify-between">
                 <span>Subtotal</span>
@@ -397,6 +509,12 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-emerald-600 font-bold">
                   <span>Coupon Discount ({couponCode})</span>
                   <span>-{formatPrice(discountAmount)}</span>
+                </div>
+              )}
+              {pointsDiscount > 0 && (
+                <div className="flex justify-between text-amber-700 font-bold">
+                  <span>RollPoints Redeemed</span>
+                  <span>-{formatPrice(pointsDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between">
