@@ -1,0 +1,21 @@
+{
+  "name": "RockinRoll — Gourmet Kathi & Fusion Rolls",
+  "short_name": "RockinRoll",
+  "description": "Order authentic smoky Kathi rolls, truffle paneer wraps, and fiery fusion bowls.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#22092C",
+  "theme_color": "#22092C",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=192&h=192&fit=crop",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=512&h=512&fit=crop",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
