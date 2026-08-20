@@ -87,12 +87,12 @@ export default async function HomePage() {
 
               <div className="pt-6 grid grid-cols-3 gap-4 border-t border-white/10 text-center lg:text-left">
                 <div>
-                  <p className="text-2xl sm:text-3xl font-black text-[#F05941]">30m</p>
+                  <p className="text-2xl sm:text-3xl font-black text-[#F05941]">25m</p>
                   <p className="text-[11px] text-neutral-400 font-semibold uppercase tracking-wider">Lightning Delivery</p>
                 </div>
                 <div>
-                  <p className="text-2xl sm:text-3xl font-black text-[#F05941]">4.9★</p>
-                  <p className="text-[11px] text-neutral-400 font-semibold uppercase tracking-wider">10,000+ Reviews</p>
+                  <p className="text-2xl sm:text-3xl font-black text-[#F05941]">4.85★</p>
+                  <p className="text-[11px] text-neutral-400 font-semibold uppercase tracking-wider">500+ Reviews</p>
                 </div>
                 <div>
                   <p className="text-2xl sm:text-3xl font-black text-[#F05941]">100%</p>
