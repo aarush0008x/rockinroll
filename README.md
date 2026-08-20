@@ -68,11 +68,4 @@ Open [http://localhost:3005](http://localhost:3005) in your browser.
 - **Email**: rockinroll@gmail.com
 - **Hours**: Open Daily 11:00 AM – 3:00 AM
 
----
-
-## 🔑 Demo Accounts (Password: `RockinRoll@2026`)
-- **Admin**: `admin@rockinroll.com`
-- **Kitchen**: `kitchen@rockinroll.com`
-- **Rider**: `rider@rockinroll.com`
-- **Customer**: `customer@rockinroll.com`
 

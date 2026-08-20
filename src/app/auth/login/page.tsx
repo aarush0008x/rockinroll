@@ -102,18 +102,6 @@ export default function LoginPage() {
             Create Account
           </Link>
         </div>
-
-        <div className="p-4 bg-[#FFF8F5] rounded-2xl text-xs text-[#22092C] border border-[#872341]/20 space-y-1.5 font-medium">
-          <p className="font-black text-[#22092C] uppercase text-[11px] tracking-wider text-[#BE3144]">
-            Demo Accounts (Password: RockinRoll@2026):
-          </p>
-          <div className="space-y-0.5 text-[11px] text-neutral-700">
-            <p><span className="font-bold text-[#22092C]">• Admin:</span> admin@rockinroll.com</p>
-            <p><span className="font-bold text-[#22092C]">• Kitchen:</span> kitchen@rockinroll.com</p>
-            <p><span className="font-bold text-[#22092C]">• Rider:</span> rider@rockinroll.com</p>
-            <p><span className="font-bold text-[#22092C]">• Customer:</span> customer@rockinroll.com</p>
-          </div>
-        </div>
       </div>
     </div>
   )
