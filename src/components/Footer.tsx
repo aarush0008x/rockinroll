@@ -47,10 +47,16 @@ export function Footer() {
               <MapPin className="w-4 h-4 text-[#F05941]" /> CGC university, Mohali
             </p>
             <p className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-[#F05941]" /> +91 95017 14559
+              <Phone className="w-4 h-4 text-[#F05941]" />
+              <a href="tel:+919501714559" className="hover:text-white transition-colors">
+                +91 95017 14559
+              </a>
             </p>
             <p className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-[#F05941]" /> support@rockinroll.in
+              <Mail className="w-4 h-4 text-[#F05941]" />
+              <a href="mailto:support@rockinroll.in" className="hover:text-white transition-colors">
+                support@rockinroll.in
+              </a>
             </p>
             <p className="text-[11px] text-neutral-400 pt-2">
               🔥 Open Daily: 11:00 AM – 3:00 AM (Late Night Delivery)
