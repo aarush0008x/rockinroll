@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs')
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('Seeding production database for RockinRoll...')
+  console.log('Seeding authentic gourmet Kathi roll menu into Supabase...')
 
   // 1. Categories
   const categories = [
@@ -27,7 +27,7 @@ async function main() {
       name: 'Roll-in-a-Bowl (Rice & Paratha Bowls)',
       sortOrder: 3,
       isActive: true,
-      imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600',
+      imageUrl: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=600',
     },
     {
       id: 'beverages-sides',
@@ -51,8 +51,8 @@ async function main() {
   const products = [
     {
       id: 'butter-chicken-roll',
-      name: 'Murgh Makhani (Butter Chicken) Roll',
-      description: 'Succulent clay-oven grilled chicken tikka tossed in rich satin makhani gravy, rolled in a flaky, ghee-layered handmade laccha paratha with pickled red onions and fresh coriander.',
+      name: 'Murgh Makhani (Butter Chicken) Kathi Roll',
+      description: 'Succulent clay-oven grilled chicken tikka tossed in rich satin makhani gravy, rolled in a flaky, ghee-layered handmade laccha paratha with pickled red onions and fresh mint chutney.',
       price: 269,
       discountPrice: 239,
       categoryId: 'signature-rolls',
@@ -76,12 +76,12 @@ async function main() {
     },
     {
       id: 'smoked-paneer-tikka-roll',
-      name: 'Dhungar Smoked Paneer Tikka Roll',
-      description: 'Charred Malai paneer cubes infused with live charcoal smoke, bell peppers, mint yogurt reduction, and chaat spices rolled in whole wheat paratha.',
+      name: 'Dhungar Smoked Paneer Tikka Kathi Roll',
+      description: 'Charred Malai paneer cubes infused with live charcoal smoke, roasted bell peppers, mint yogurt reduction, and chaat spices rolled in golden laccha paratha.',
       price: 229,
       discountPrice: 199,
       categoryId: 'signature-rolls',
-      imageUrl: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800',
+      imageUrl: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=800',
       isVeg: true,
       spiceLevel: 2,
       preparationTime: 10,
@@ -155,7 +155,7 @@ async function main() {
       price: 219,
       discountPrice: 189,
       categoryId: 'classic-rolls',
-      imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800',
+      imageUrl: 'https://images.unsplash.com/photo-1606471191009-63994c53433b?w=800',
       isVeg: true,
       spiceLevel: 1,
       preparationTime: 10,
@@ -175,11 +175,11 @@ async function main() {
     {
       id: 'butter-chicken-rice-bowl',
       name: 'Deconstructed Butter Chicken Roll-Bowl',
-      description: 'All the goodness of our best-selling roll served over fragrant jeera basmati rice, layered with charcoal chicken tikka, butter gravy, crunchy paratha crisps, and mint dip.',
+      description: 'All the goodness of our best-selling roll served over fragrant jeera basmati rice, layered with charcoal chicken tikka, rich butter makhani gravy, crunchy paratha crisps, and mint dip.',
       price: 299,
       discountPrice: 269,
       categoryId: 'fusion-bowls',
-      imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800',
+      imageUrl: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=800',
       isVeg: false,
       spiceLevel: 2,
       preparationTime: 12,
@@ -198,12 +198,12 @@ async function main() {
     },
     {
       id: 'paneer-tikka-biryani-bowl',
-      name: 'Flame-Grilled Paneer Tikka Bowl',
+      name: 'Flame-Grilled Paneer Tikka Fusion Bowl',
       description: 'Aromatic spiced saffron rice bowl topped with smoked paneer cubes, roasted bell peppers, crispy caramelized onions, and house spicy garlic dip.',
       price: 269,
       discountPrice: 239,
       categoryId: 'fusion-bowls',
-      imageUrl: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=800',
+      imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800',
       isVeg: true,
       spiceLevel: 2,
       preparationTime: 10,
@@ -248,7 +248,7 @@ async function main() {
       price: 129,
       discountPrice: 109,
       categoryId: 'beverages-sides',
-      imageUrl: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=800',
+      imageUrl: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=800',
       isVeg: true,
       spiceLevel: 2,
       preparationTime: 6,
