@@ -1,5 +1,5 @@
 /**
- * Brevo (Sendinblue) Transactional Email Service for RockinRoll
+ * Transactional Email Service for RockinRoll (Powered by Resend & Brevo)
  */
 
 export interface EmailRecipient {
@@ -14,45 +14,81 @@ export interface SendEmailOptions {
   textContent?: string
 }
 
-export async function sendBrevoEmail(options: SendEmailOptions) {
-  const apiKey = process.env.BREVO_API_KEY
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || 'rockinroll@gmail.com'
-  const senderName = process.env.BREVO_SENDER_NAME || 'RockinRoll Gourmet Rolls'
+export async function sendEmail(options: SendEmailOptions) {
+  const resendApiKey = process.env.RESEND_API_KEY
+  const brevoApiKey = process.env.BREVO_API_KEY
+  const senderEmail = process.env.RESEND_FROM_EMAIL || process.env.BREVO_SENDER_EMAIL || 'orders@rockinroll.in'
+  const senderName = process.env.RESEND_FROM_NAME || process.env.BREVO_SENDER_NAME || 'RockinRoll Gourmet Rolls'
 
-  if (!apiKey || apiKey === 'your_brevo_api_key_here') {
-    console.log(`[BREVO SIMULATION] Email to ${options.to.map((t) => t.email).join(', ')} | Subject: ${options.subject}`)
-    return { success: true, simulated: true }
-  }
+  // 1. Primary: Resend API (https://resend.com)
+  if (resendApiKey && resendApiKey !== 'your_resend_api_key_here') {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: `${senderName} <${senderEmail}>`,
+          to: options.to.map((t) => t.email),
+          subject: options.subject,
+          html: options.htmlContent,
+          text: options.textContent,
+        }),
+      })
 
-  try {
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'api-key': apiKey,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        sender: { name: senderName, email: senderEmail },
-        to: options.to,
-        subject: options.subject,
-        htmlContent: options.htmlContent,
-        textContent: options.textContent,
-      }),
-    })
+      const data = await res.json()
+      if (!res.ok) {
+        console.error('Resend API Error:', data)
+        return { success: false, error: data.message || 'Failed to send email via Resend' }
+      }
 
-    const data = await res.json()
-    if (!res.ok) {
-      console.error('Brevo API Error:', data)
-      return { success: false, error: data.message || 'Failed to send email via Brevo' }
+      return { success: true, provider: 'resend', data }
+    } catch (error: any) {
+      console.error('Resend email exception:', error)
+      return { success: false, error: error.message }
     }
-
-    return { success: true, data }
-  } catch (error: any) {
-    console.error('Brevo email exception:', error)
-    return { success: false, error: error.message }
   }
+
+  // 2. Fallback: Brevo API
+  if (brevoApiKey && brevoApiKey !== 'your_brevo_api_key_here') {
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: options.to,
+          subject: options.subject,
+          htmlContent: options.htmlContent,
+          textContent: options.textContent,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        console.error('Brevo API Error:', data)
+        return { success: false, error: data.message || 'Failed to send email via Brevo' }
+      }
+
+      return { success: true, provider: 'brevo', data }
+    } catch (error: any) {
+      console.error('Brevo email exception:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  // 3. Local simulation mode when no API keys are provided
+  console.log(`[EMAIL SIMULATION] To: ${options.to.map((t) => t.email).join(', ')} | Subject: ${options.subject}`)
+  return { success: true, simulated: true }
 }
+
+export const sendBrevoEmail = sendEmail
 
 // ── 1. ACCOUNT VERIFICATION EMAIL ───────────────────────────────────────────
 export async function sendAccountVerificationEmail(
