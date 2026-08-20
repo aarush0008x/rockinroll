@@ -8,7 +8,8 @@ import {
   DollarSign, ShoppingBag, Users, Shield, TrendingUp, RefreshCw,
   Plus, Edit, Trash2, CheckCircle, XCircle, Search, Flame,
   Check, AlertCircle, Sparkles, Filter, X, Layers, FolderPlus,
-  Truck, ChefHat, Clock, Phone, MapPin
+  Truck, ChefHat, Clock, Phone, MapPin, Tag, Key, Globe, MessageSquare,
+  Send, Copy, HelpCircle, ExternalLink, Mail, CheckCheck, Smartphone, QrCode
 } from 'lucide-react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
@@ -16,9 +17,35 @@ export default function AdminDashboardPage() {
   const router = useRouter()
   const { user } = useAuth()
 
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MENU' | 'CATEGORIES' | 'USERS' | 'ORDERS'>('OVERVIEW')
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MENU' | 'CATEGORIES' | 'COUPONS' | 'USERS' | 'ORDERS' | 'INTEGRATIONS'>('OVERVIEW')
 
   // Overview data
+  
+  // Coupon management state
+  const [couponsList, setCouponsList] = useState<any[]>([])
+  const [loadingCoupons, setLoadingCoupons] = useState(false)
+  const [showAddCouponModal, setShowAddCouponModal] = useState(false)
+  const [couponForm, setCouponForm] = useState({
+    id: '',
+    discountType: 'FLAT',
+    value: 50,
+    minOrderAmount: 199,
+    maxDiscount: 50,
+    isActive: true,
+  })
+
+  // WhatsApp test state
+  const [testPhone, setTestPhone] = useState('')
+  const [testingWhatsApp, setTestingWhatsApp] = useState(false)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  const copyToClipboard = (text: string, keyName: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedKey(keyName)
+    setTimeout(() => setCopiedKey(null), 2500)
+    showNotification('success', `Copied to clipboard!`)
+  }
+
   const [analytics, setAnalytics] = useState<any>(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(true)
 
@@ -95,7 +122,111 @@ export default function AdminDashboardPage() {
     if (activeTab === 'CATEGORIES') fetchCategories()
     if (activeTab === 'USERS') fetchUsers()
     if (activeTab === 'ORDERS') fetchOrders()
+    if (activeTab === 'COUPONS') fetchCoupons()
   }, [activeTab])
+
+  
+  const fetchCoupons = async () => {
+    try {
+      setLoadingCoupons(true)
+      const res = await fetch('/api/admin/coupons')
+      const json = await res.json()
+      if (json.success) setCouponsList(json.data)
+    } finally {
+      setLoadingCoupons(false)
+    }
+  }
+
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const res = await fetch('/api/admin/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: couponForm.id.trim().toUpperCase(),
+          discountType: couponForm.discountType,
+          value: parseFloat(couponForm.value as any) || 0,
+          minOrderAmount: parseFloat(couponForm.minOrderAmount as any) || 0,
+          maxDiscount: couponForm.maxDiscount ? parseFloat(couponForm.maxDiscount as any) : null,
+          isActive: couponForm.isActive,
+        }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        showNotification('success', `Coupon '${couponForm.id}' created successfully!`)
+        setShowAddCouponModal(false)
+        setCouponForm({ id: '', discountType: 'FLAT', value: 50, minOrderAmount: 199, maxDiscount: 50, isActive: true })
+        fetchCoupons()
+      } else {
+        showNotification('error', json.error || 'Failed to create coupon')
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'Error creating coupon')
+    }
+  }
+
+  const handleToggleCoupon = async (couponId: string, currentStatus: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/coupons/${couponId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !currentStatus }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        setCouponsList((prev) =>
+          prev.map((c) => (c.id === couponId ? { ...c, isActive: !currentStatus } : c))
+        )
+        showNotification('success', `Coupon ${couponId} is now ${!currentStatus ? 'ACTIVE' : 'PAUSED'}`)
+      } else {
+        showNotification('error', json.error || 'Failed to update coupon')
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'Error updating coupon')
+    }
+  }
+
+  const handleDeleteCoupon = async (couponId: string) => {
+    if (!confirm(`Are you sure you want to delete coupon code "${couponId}"?`)) return
+    try {
+      const res = await fetch(`/api/admin/coupons/${couponId}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (json.success) {
+        showNotification('success', `Coupon ${couponId} deleted`)
+        fetchCoupons()
+      } else {
+        showNotification('error', json.error || 'Failed to delete coupon')
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'Error deleting coupon')
+    }
+  }
+
+  const handleSendTestWhatsApp = async () => {
+    if (!testPhone || testPhone.length < 10) {
+      showNotification('error', 'Please enter a valid 10-digit mobile number')
+      return
+    }
+    try {
+      setTestingWhatsApp(true)
+      const res = await fetch('/api/auth/phone/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: testPhone }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        showNotification('success', `WhatsApp test OTP sent to +91 ${testPhone}`)
+      } else {
+        showNotification('error', json.error || 'Failed to dispatch WhatsApp message')
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'WhatsApp error')
+    } finally {
+      setTestingWhatsApp(false)
+    }
+  }
 
   const fetchAnalytics = async () => {
     try {
@@ -549,6 +680,29 @@ export default function AdminDashboardPage() {
           >
             Users ({usersList.length || 0})
           </button>
+          <button
+            onClick={() => setActiveTab('COUPONS')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'COUPONS'
+                ? 'bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white shadow'
+                : 'text-neutral-300 hover:text-white'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>Coupons ({couponsList.length || 0})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('INTEGRATIONS')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'INTEGRATIONS'
+                ? 'bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white shadow'
+                : 'text-neutral-300 hover:text-white'
+            }`}
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>Integrations & Setup</span>
+          </button>
+
         </div>
       </div>
 
@@ -1173,6 +1327,342 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* TAB: COUPONS & DISCOUNT ENGINE */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'COUPONS' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Tag className="w-6 h-6 text-[#BE3144]" />
+                <h2 className="text-xl font-black text-[#22092C]">Promo Coupons & Discount Engine</h2>
+              </div>
+              <p className="text-xs text-neutral-500">Create percentage or flat vouchers, minimum order restrictions, and promotional campaigns</p>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setShowAddCouponModal(true)}
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white text-xs font-black flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all"
+              >
+                <Plus className="w-4 h-4" /> Create New Coupon
+              </button>
+              <button
+                onClick={fetchCoupons}
+                className="p-2.5 rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                title="Refresh Coupons"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-5 rounded-2xl bg-white border border-neutral-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Total Coupons</p>
+                <h3 className="text-2xl font-black text-[#22092C] mt-1">{couponsList.length}</h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-700">
+                <Tag className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Active Promos</p>
+                <h3 className="text-2xl font-black text-emerald-900 mt-1">
+                  {couponsList.filter((c) => c.isActive).length}
+                </h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-amber-50/60 border border-amber-200 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-amber-800 uppercase tracking-wider">Campus Special</p>
+                <h3 className="text-2xl font-black text-amber-900 mt-1">CGC50</h3>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                <Sparkles className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Coupons Table */}
+          <div className="bg-white rounded-3xl border border-neutral-200/80 shadow-sm overflow-hidden">
+            {loadingCoupons ? (
+              <div className="p-12 text-center text-xs text-neutral-400">Loading coupons...</div>
+            ) : couponsList.length === 0 ? (
+              <div className="p-12 text-center space-y-3">
+                <Tag className="w-10 h-10 text-neutral-300 mx-auto" />
+                <h4 className="font-bold text-[#22092C]">No coupons created yet</h4>
+                <p className="text-xs text-neutral-500">Create your first promo code to boost orders!</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#22092C] text-white font-extrabold uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-4 px-6">Coupon Code</th>
+                      <th className="py-4 px-6">Discount Value</th>
+                      <th className="py-4 px-6">Min Order</th>
+                      <th className="py-4 px-6">Max Cap</th>
+                      <th className="py-4 px-6">Status</th>
+                      <th className="py-4 px-6 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 font-medium text-neutral-700">
+                    {couponsList.map((c) => (
+                      <tr key={c.id} className="hover:bg-[#FFF8F5]/60 transition-colors">
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-sm px-3 py-1 bg-neutral-100 rounded-lg text-[#22092C] border border-neutral-200">
+                              {c.id}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(c.id, c.id)}
+                              className="text-neutral-400 hover:text-[#BE3144]"
+                              title="Copy code"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="font-extrabold text-[#BE3144]">
+                            {c.discountType === 'PERCENTAGE' ? `${c.value}% OFF` : `₹${c.value} FLAT OFF`}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 font-bold text-neutral-800">
+                          {c.minOrderAmount > 0 ? formatPrice(c.minOrderAmount) : 'No Minimum'}
+                        </td>
+                        <td className="py-4 px-6">
+                          {c.maxDiscount ? formatPrice(c.maxDiscount) : 'No Limit'}
+                        </td>
+                        <td className="py-4 px-6">
+                          <button
+                            onClick={() => handleToggleCoupon(c.id, c.isActive)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-colors ${
+                              c.isActive
+                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                : 'bg-neutral-200 text-neutral-600 hover:bg-neutral-300'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${c.isActive ? 'bg-emerald-600' : 'bg-neutral-500'}`} />
+                            {c.isActive ? 'ACTIVE' : 'PAUSED'}
+                          </button>
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button
+                            onClick={() => handleDeleteCoupon(c.id)}
+                            className="p-2 rounded-xl text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            title="Delete Coupon"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* TAB: INTEGRATIONS & SERVICE SETUP GUIDES */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {activeTab === 'INTEGRATIONS' && (
+        <div className="space-y-8">
+          <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200/80 shadow-sm space-y-1">
+            <div className="flex items-center gap-2">
+              <Key className="w-6 h-6 text-[#BE3144]" />
+              <h2 className="text-xl font-black text-[#22092C]">Live Integrations & Platform Configuration</h2>
+            </div>
+            <p className="text-xs text-neutral-500">
+              Manage Cashfree Payments, Transactional Emails (Resend/Brevo), WhatsApp Cloud API & Official Domain Email Setup
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* 1. CASHFREE PAYMENT GATEWAY */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#BE3144] to-[#F05941] flex items-center justify-center text-white shadow">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-[#22092C]">Cashfree Payments</h3>
+                    <p className="text-[11px] text-neutral-500">UPI, Cards, Google Pay & NetBanking</p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                  Connected
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="text-[11px] font-extrabold uppercase text-neutral-500 block mb-1">
+                    Webhook Endpoint (Paste in Cashfree Dashboard):
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value="https://rockinroll.in/api/payments/cashfree/webhook"
+                      className="w-full p-2.5 bg-neutral-50 font-mono text-[11px] rounded-xl border border-neutral-200 text-neutral-800"
+                    />
+                    <button
+                      onClick={() => copyToClipboard('https://rockinroll.in/api/payments/cashfree/webhook', 'cashfree')}
+                      className="px-3 py-2.5 bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl text-xs font-bold"
+                    >
+                      {copiedKey === 'cashfree' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#872341]/20 space-y-2">
+                  <p className="font-bold text-[#22092C]">⚙️ Environment Variables Required (.env / Vercel):</p>
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-neutral-700 font-mono">
+                    <li>CASHFREE_APP_ID="your_cashfree_app_id"</li>
+                    <li>CASHFREE_SECRET_KEY="your_cashfree_secret"</li>
+                    <li>CASHFREE_ENVIRONMENT="PROD"</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. TRANSACTIONAL EMAIL (RESEND / BREVO) */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#22092C] to-[#351044] flex items-center justify-center text-white shadow">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-[#22092C]">Email Service (Resend & Brevo)</h3>
+                    <p className="text-[11px] text-neutral-500">Sign Up OTPs, Password Resets & Order Status</p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                  Active
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-200 space-y-1">
+                  <p className="text-[11px] text-neutral-500 font-bold uppercase">Official Verified Sender:</p>
+                  <p className="font-bold text-[#22092C] text-sm">orders@rockinroll.in</p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[#FFF8F5] border border-[#872341]/20 space-y-2">
+                  <p className="font-bold text-[#22092C]">🌐 DNS Configuration for rockinroll.in:</p>
+                  <p className="text-[11px] text-neutral-600">
+                    Add the SPF TXT record in Cloudflare DNS for 100% deliverability directly to customer inboxes:
+                  </p>
+                  <div className="p-2 bg-white rounded-lg font-mono text-[10px] text-neutral-800 border border-neutral-200">
+                    v=spf1 include:resend.com ~all
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. WHATSAPP BUSINESS NOTIFICATIONS */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#25D366] to-[#128C7E] flex items-center justify-center text-white shadow">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-[#22092C]">WhatsApp Business Notifications</h3>
+                    <p className="text-[11px] text-neutral-500">Live order confirmations, rider map link & OTPs</p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase">
+                  Integrated
+                </span>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-3">
+                  <p className="font-bold text-emerald-900">📲 Live WhatsApp Test Dispatcher:</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="tel"
+                      placeholder="Enter 10-digit mobile number"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-neutral-300 text-xs font-bold text-[#1A1A1A]"
+                    />
+                    <button
+                      onClick={handleSendTestWhatsApp}
+                      disabled={testingWhatsApp || testPhone.length < 10}
+                      className="px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-black text-xs whitespace-nowrap disabled:opacity-50"
+                    >
+                      {testingWhatsApp ? 'Sending...' : 'Send Test OTP'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200 space-y-1.5 text-[11px] text-neutral-600">
+                  <p className="font-bold text-neutral-800">Supported WhatsApp Providers:</p>
+                  <p>1. <strong>Meta WhatsApp Cloud API</strong>: Set <code className="text-[#BE3144]">WHATSAPP_PHONE_ID</code> and <code className="text-[#BE3144]">WHATSAPP_API_KEY</code></p>
+                  <p>2. <strong>UltraMsg Webhook</strong>: Set <code className="text-[#BE3144]">ULTRAMSG_INSTANCE_ID</code> and <code className="text-[#BE3144]">ULTRAMSG_TOKEN</code></p>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. BUSINESS EMAIL CREATION SETUP */}
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm space-y-5">
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-[#22092C]">Business Email Setup (@rockinroll.in)</h3>
+                    <p className="text-[11px] text-neutral-500">Free Cloudflare Email Routing & Custom Inboxes</p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black uppercase">
+                  Guides
+                </span>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="p-4 rounded-2xl bg-blue-50/50 border border-blue-200 space-y-2">
+                  <p className="font-bold text-blue-950">⚡ 100% Free Cloudflare Email Routing Setup:</p>
+                  <ol className="list-decimal pl-4 space-y-1 text-[11px] text-blue-900 leading-relaxed">
+                    <li>Go to <strong>Cloudflare Dashboard ➔ rockinroll.in ➔ Email Routing</strong>.</li>
+                    <li>Add destination address: <code className="font-bold">rockinroll779@gmail.com</code> and verify in Gmail.</li>
+                    <li>Create rule for <code className="font-bold">support@rockinroll.in</code> ➔ Forward to <code className="font-bold">rockinroll779@gmail.com</code>.</li>
+                    <li>Click <strong>"Add missing DNS records automatically"</strong>.</li>
+                  </ol>
+                </div>
+
+                <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-[11px] text-neutral-600">
+                  💡 All emails sent to <strong className="text-[#22092C]">support@rockinroll.in</strong> will automatically arrive inside your personal Gmail inbox instantly.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* MODAL: ADD / EDIT PRODUCT */}
       {/* ─────────────────────────────────────────────────────────────────── */}
@@ -1361,6 +1851,125 @@ export default function AdminDashboardPage() {
                   className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white text-xs font-black shadow-lg hover:brightness-110"
                 >
                   {editingProduct ? 'Update Product' : 'Create Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* MODAL: ADD / EDIT PROMO COUPON */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {showAddCouponModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 space-y-5 border border-neutral-100">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+              <div className="flex items-center gap-2">
+                <Tag className="w-5 h-5 text-[#BE3144]" />
+                <h3 className="text-lg font-black text-[#22092C]">Create Promo Coupon</h3>
+              </div>
+              <button
+                onClick={() => setShowAddCouponModal(false)}
+                className="p-1 rounded-full text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCoupon} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-neutral-700">Coupon Code (e.g. CGC50, FESTIVE20)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. ROLLFEAST50"
+                  value={couponForm.id}
+                  onChange={(e) => setCouponForm({ ...couponForm, id: e.target.value.toUpperCase() })}
+                  className="w-full p-2.5 text-xs font-mono font-black uppercase rounded-xl border border-neutral-300 focus:ring-[#BE3144] tracking-wider text-[#1A1A1A]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-neutral-700">Discount Type</label>
+                  <select
+                    value={couponForm.discountType}
+                    onChange={(e) => setCouponForm({ ...couponForm, discountType: e.target.value as any })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
+                  >
+                    <option value="FLAT">Flat ₹ Amount</option>
+                    <option value="PERCENTAGE">Percentage (%)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-neutral-700">
+                    {couponForm.discountType === 'PERCENTAGE' ? 'Discount %' : 'Flat ₹ OFF'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={couponForm.value}
+                    onChange={(e) => setCouponForm({ ...couponForm, value: parseFloat(e.target.value) || 0 })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-neutral-700">Min Cart Value (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={couponForm.minOrderAmount}
+                    onChange={(e) => setCouponForm({ ...couponForm, minOrderAmount: parseFloat(e.target.value) || 0 })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-neutral-700">Max Discount Cap (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Optional"
+                    value={couponForm.maxDiscount || ''}
+                    onChange={(e) => setCouponForm({ ...couponForm, maxDiscount: parseFloat(e.target.value) || 0 })}
+                    className="w-full p-2.5 text-xs rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 p-3 bg-[#FFF8F5] rounded-xl border border-neutral-200">
+                <input
+                  type="checkbox"
+                  id="couponActive"
+                  checked={couponForm.isActive}
+                  onChange={(e) => setCouponForm({ ...couponForm, isActive: e.target.checked })}
+                  className="rounded text-[#BE3144] focus:ring-[#BE3144]"
+                />
+                <label htmlFor="couponActive" className="text-xs font-bold text-neutral-700 cursor-pointer">
+                  Activate coupon immediately upon creation
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCouponModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-neutral-300 text-xs font-bold hover:bg-neutral-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white text-xs font-black shadow-lg hover:brightness-110"
+                >
+                  Save Coupon
                 </button>
               </div>
             </form>

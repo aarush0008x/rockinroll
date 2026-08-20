@@ -64,17 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     const familyId = generateFamilyId()
-    const { accessToken, refreshToken } = issueTokenPair(user, familyId)
-
-    const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex')
-    await prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        familyId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    })
+    const { accessToken, refreshToken } = await issueTokenPair(user, familyId)
 
     const response = NextResponse.json({
       success: true,
