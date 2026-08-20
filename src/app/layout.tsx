@@ -11,6 +11,15 @@ export const metadata: Metadata = {
   title: 'RockinRoll — Gourmet Kathi & Fusion Rolls',
   description: 'Order authentic smoky Kathi rolls, truffle paneer wraps, and fiery fusion bowls. Fast midnight delivery.',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-icon.svg', type: 'image/svg+xml' },
+    ],
+  },
 }
 
 export default function RootLayout({
