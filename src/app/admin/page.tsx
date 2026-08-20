@@ -350,6 +350,107 @@ export default function AdminDashboardPage() {
     }
   }
 
+  
+  // Inventory Modal State
+  const [showAddInventoryModal, setShowAddInventoryModal] = useState(false)
+  const [invForm, setInvForm] = useState({
+    id: '',
+    name: '',
+    category: 'FLATBREADS',
+    currentQty: 100,
+    unit: 'pcs',
+    minThreshold: 25,
+    idealQty: 150,
+  })
+
+  const handleOpenAddInventory = () => {
+    setEditingInventoryItem(null)
+    setInvForm({
+      id: '',
+      name: '',
+      category: 'FLATBREADS',
+      currentQty: 100,
+      unit: 'pcs',
+      minThreshold: 25,
+      idealQty: 150,
+    })
+    setShowAddInventoryModal(true)
+  }
+
+  const handleOpenEditInventory = (item: any) => {
+    setEditingInventoryItem(item)
+    setInvForm({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      currentQty: item.currentQty,
+      unit: item.unit,
+      minThreshold: item.minThreshold,
+      idealQty: item.idealQty,
+    })
+    setShowAddInventoryModal(true)
+  }
+
+  const handleSaveInventoryForm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (editingInventoryItem) {
+        const res = await fetch(`/api/admin/inventory/${editingInventoryItem.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(invForm),
+        })
+        const json = await res.json()
+        if (json.success) {
+          showNotification('success', `Item "${invForm.name}" updated!`)
+          setShowAddInventoryModal(false)
+          fetchInventory()
+        } else {
+          showNotification('error', json.error || 'Failed to update item')
+        }
+      } else {
+        const res = await fetch('/api/admin/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: invForm.name,
+            category: invForm.category,
+            currentQty: parseFloat(invForm.currentQty as any) || 0,
+            unit: invForm.unit,
+            minThreshold: parseFloat(invForm.minThreshold as any) || 0,
+            idealQty: parseFloat(invForm.idealQty as any) || 100,
+          }),
+        })
+        const json = await res.json()
+        if (json.success) {
+          showNotification('success', `Item "${invForm.name}" added to inventory!`)
+          setShowAddInventoryModal(false)
+          fetchInventory()
+        } else {
+          showNotification('error', json.error || 'Failed to add item')
+        }
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'Error saving inventory item')
+    }
+  }
+
+  const handleDeleteInventory = async (itemId: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}" from inventory?`)) return
+    try {
+      const res = await fetch(`/api/admin/inventory/${itemId}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (json.success) {
+        showNotification('success', `"${name}" removed from inventory`)
+        fetchInventory()
+      } else {
+        showNotification('error', json.error || 'Failed to delete item')
+      }
+    } catch (e: any) {
+      showNotification('error', e.message || 'Error deleting item')
+    }
+  }
+
   const handleUpdateStock = async (itemId: string, newQty: number, itemName: string) => {
     try {
       const res = await fetch('/api/admin/inventory', {
@@ -1654,12 +1755,21 @@ export default function AdminDashboardPage() {
               </p>
             </div>
 
-            <button
-              onClick={fetchInventory}
-              className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-xs font-bold text-neutral-700 flex items-center gap-1.5"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingInventory ? 'animate-spin' : ''}`} /> Refresh Inventory
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleOpenAddInventory}
+                className="px-4 py-2.5 bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow hover:brightness-110"
+              >
+                <Plus className="w-4 h-4" /> Add Kitchen Item
+              </button>
+              <button
+                onClick={fetchInventory}
+                className="p-2.5 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-xs font-bold text-neutral-700 flex items-center gap-1.5"
+                title="Refresh Inventory"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingInventory ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Low stock alert banner */}
@@ -1807,10 +1917,24 @@ export default function AdminDashboardPage() {
                             </button>
                             <button
                               onClick={() => handleUpdateStock(item.id, item.idealQty, item.name)}
-                              className="px-3 py-1 bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black text-xs rounded-lg shadow hover:brightness-110"
+                              className="px-2.5 py-1 bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black text-xs rounded-lg shadow hover:brightness-110"
                               title="Restock to full capacity"
                             >
-                              Fill to Max
+                              Fill
+                            </button>
+                            <button
+                              onClick={() => handleOpenEditInventory(item)}
+                              className="p-1.5 rounded-lg bg-neutral-100 hover:bg-[#872341] hover:text-white text-neutral-600 transition-colors"
+                              title="Edit item details"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteInventory(item.id, item.name)}
+                              className="p-1.5 rounded-lg bg-red-50 hover:bg-red-600 hover:text-white text-red-600 transition-colors"
+                              title="Delete item"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -2269,6 +2393,131 @@ export default function AdminDashboardPage() {
       )}
 
       
+      
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* MODAL: ADD / EDIT INVENTORY ITEM */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {showAddInventoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-[#BE3144]" />
+                <h3 className="text-xl font-black text-[#22092C]">
+                  {editingInventoryItem ? `Edit ${editingInventoryItem.name}` : 'Add Kitchen Item'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowAddInventoryModal(false)}
+                className="p-2 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveInventoryForm} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Item / Ingredient Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rumali Roti Dough Portions"
+                  value={invForm.name}
+                  onChange={(e) => setInvForm({ ...invForm, name: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Category</label>
+                  <select
+                    value={invForm.category}
+                    onChange={(e) => setInvForm({ ...invForm, category: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-bold text-[#1A1A1A]"
+                  >
+                    <option value="FLATBREADS">FLATBREADS (Roti/Paratha)</option>
+                    <option value="PROTEINS">PROTEINS (Paneer/Chicken)</option>
+                    <option value="SAUCES">SAUCES & CHUTNEYS</option>
+                    <option value="DAIRY">DAIRY (Cheese/Butter)</option>
+                    <option value="PACKAGING">PACKAGING (Boxes/Foils)</option>
+                    <option value="BEVERAGES">BEVERAGES</option>
+                    <option value="GENERAL">GENERAL INGREDIENTS</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Unit of Measure</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="pcs, kg, liters, rolls"
+                    value={invForm.unit}
+                    onChange={(e) => setInvForm({ ...invForm, unit: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-bold text-[#1A1A1A]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Current Qty</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={invForm.currentQty}
+                    onChange={(e) => setInvForm({ ...invForm, currentQty: parseFloat(e.target.value) || 0 })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono font-black text-[#22092C]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Min Alert</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={invForm.minThreshold}
+                    onChange={(e) => setInvForm({ ...invForm, minThreshold: parseFloat(e.target.value) || 0 })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono font-bold text-red-600"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Ideal Max</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={invForm.idealQty}
+                    onChange={(e) => setInvForm({ ...invForm, idealQty: parseFloat(e.target.value) || 100 })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-mono font-bold text-emerald-700"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddInventoryModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-neutral-300 font-bold hover:bg-neutral-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black shadow-lg hover:brightness-110 active:scale-95"
+                >
+                  {editingInventoryItem ? 'Update Stock Item' : 'Add to Inventory'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ─────────────────────────────────────────────────────────────────── */}
       {/* MODAL: ADD / EDIT PRODUCT */}
       {/* ─────────────────────────────────────────────────────────────────── */}

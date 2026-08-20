@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/security'
 import { prisma } from '@/lib/db'
+import { z } from 'zod'
+
+const inventoryItemSchema = z.object({
+  name: z.string().min(2, 'Item name must be at least 2 characters'),
+  category: z.string().default('GENERAL'),
+  currentQty: z.number().nonnegative('Stock quantity must be non-negative'),
+  unit: z.string().default('units'),
+  minThreshold: z.number().nonnegative('Minimum threshold must be non-negative'),
+  idealQty: z.number().positive('Ideal quantity must be positive'),
+})
 
 export async function GET(req: NextRequest) {
-  const auth = requireRole(req, ['ADMIN', 'SUPER_ADMIN'])
+  const auth = requireRole(req, ['ADMIN', 'SUPER_ADMIN', 'STAFF'])
   if (auth instanceof NextResponse) return auth
 
   try {
     let items = await prisma.inventoryItem.findMany({
-      orderBy: { currentQty: 'asc' },
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
     })
 
     // Seed default items if empty
@@ -28,7 +38,7 @@ export async function GET(req: NextRequest) {
       })
 
       items = await prisma.inventoryItem.findMany({
-        orderBy: { currentQty: 'asc' },
+        orderBy: [{ category: 'asc' }, { name: 'asc' }],
       })
     }
 
@@ -40,17 +50,45 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest) {
-  const auth = requireRole(req, ['ADMIN', 'SUPER_ADMIN'])
+export async function POST(req: NextRequest) {
+  const auth = requireRole(req, ['ADMIN', 'SUPER_ADMIN', 'STAFF'])
   if (auth instanceof NextResponse) return auth
 
   try {
-    const { id, currentQty, minThreshold, idealQty } = await req.json()
+    const body = await req.json()
+    const parsed = inventoryItemSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ success: false, error: parsed.error.issues[0].message }, { status: 400 })
+    }
+
+    const item = await prisma.inventoryItem.create({
+      data: parsed.data,
+    })
+
+    return NextResponse.json({ success: true, data: item }, { status: 201 })
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  const auth = requireRole(req, ['ADMIN', 'SUPER_ADMIN', 'STAFF'])
+  if (auth instanceof NextResponse) return auth
+
+  try {
+    const { id, name, category, currentQty, unit, minThreshold, idealQty } = await req.json()
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Item ID required' }, { status: 400 })
+    }
 
     const updated = await prisma.inventoryItem.update({
       where: { id },
       data: {
+        ...(name !== undefined && { name }),
+        ...(category !== undefined && { category }),
         ...(currentQty !== undefined && { currentQty: parseFloat(currentQty) }),
+        ...(unit !== undefined && { unit }),
         ...(minThreshold !== undefined && { minThreshold: parseFloat(minThreshold) }),
         ...(idealQty !== undefined && { idealQty: parseFloat(idealQty) }),
       },

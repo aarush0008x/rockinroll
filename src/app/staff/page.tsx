@@ -3,12 +3,151 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { ChefHat, Check, RefreshCw, Plus, Clock, AlertTriangle, Flame, Phone, CheckCircle2, Volume2, VolumeX, Printer } from 'lucide-react'
+import { ChefHat, Check, RefreshCw, Plus, Clock, Package, Edit, Trash2, X, AlertCircle, AlertTriangle, Flame, Phone, CheckCircle2, Volume2, VolumeX, Printer } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 export default function StaffKitchenPage() {
   const router = useRouter()
   const { user } = useAuth()
+    const [staffTab, setStaffTab] = useState<'KDS' | 'INVENTORY'>('KDS')
+  
+  // Kitchen Inventory State
+  const [inventoryList, setInventoryList] = useState<any[]>([])
+  const [loadingInventory, setLoadingInventory] = useState(false)
+  const [lowStockCount, setLowStockCount] = useState(0)
+  const [showAddInventoryModal, setShowAddInventoryModal] = useState(false)
+  const [editingInventoryItem, setEditingInventoryItem] = useState<any>(null)
+  const [invForm, setInvForm] = useState({
+    id: '',
+    name: '',
+    category: 'FLATBREADS',
+    currentQty: 100,
+    unit: 'pcs',
+    minThreshold: 25,
+    idealQty: 150,
+  })
+
+  const fetchInventory = async () => {
+    try {
+      setLoadingInventory(true)
+      const res = await fetch('/api/admin/inventory')
+      const json = await res.json()
+      if (json.success) {
+        setInventoryList(json.data)
+        setLowStockCount(json.lowStockCount || 0)
+      }
+    } finally {
+      setLoadingInventory(false)
+    }
+  }
+
+  const handleUpdateStock = async (itemId: string, newQty: number, itemName: string) => {
+    try {
+      const res = await fetch(`/api/admin/inventory/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentQty: newQty }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        showToast(`Stock updated for ${itemName}: ${newQty}`)
+        fetchInventory()
+      } else {
+        showToast(json.error || 'Failed to update stock')
+      }
+    } catch {
+      showToast('Error updating stock')
+    }
+  }
+
+  const handleOpenAddInventory = () => {
+    setEditingInventoryItem(null)
+    setInvForm({
+      id: '',
+      name: '',
+      category: 'FLATBREADS',
+      currentQty: 100,
+      unit: 'pcs',
+      minThreshold: 25,
+      idealQty: 150,
+    })
+    setShowAddInventoryModal(true)
+  }
+
+  const handleOpenEditInventory = (item: any) => {
+    setEditingInventoryItem(item)
+    setInvForm({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      currentQty: item.currentQty,
+      unit: item.unit,
+      minThreshold: item.minThreshold,
+      idealQty: item.idealQty,
+    })
+    setShowAddInventoryModal(true)
+  }
+
+  const handleSaveInventoryForm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (editingInventoryItem) {
+        const res = await fetch(`/api/admin/inventory/${editingInventoryItem.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(invForm),
+        })
+        const json = await res.json()
+        if (json.success) {
+          showToast(`"${invForm.name}" updated!`)
+          setShowAddInventoryModal(false)
+          fetchInventory()
+        } else {
+          showToast(json.error || 'Failed to update item')
+        }
+      } else {
+        const res = await fetch('/api/admin/inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: invForm.name,
+            category: invForm.category,
+            currentQty: parseFloat(invForm.currentQty as any) || 0,
+            unit: invForm.unit,
+            minThreshold: parseFloat(invForm.minThreshold as any) || 0,
+            idealQty: parseFloat(invForm.idealQty as any) || 100,
+          }),
+        })
+        const json = await res.json()
+        if (json.success) {
+          showToast(`"${invForm.name}" added to inventory!`)
+          setShowAddInventoryModal(false)
+          fetchInventory()
+        } else {
+          showToast(json.error || 'Failed to add item')
+        }
+      }
+    } catch {
+      showToast('Error saving inventory item')
+    }
+  }
+
+  const handleDeleteInventory = async (itemId: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}" from inventory?`)) return
+    try {
+      const res = await fetch(`/api/admin/inventory/${itemId}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (json.success) {
+        showToast(`"${name}" removed from inventory`)
+        fetchInventory()
+      } else {
+        showToast(json.error || 'Failed to delete item')
+      }
+    } catch {
+      showToast('Error deleting item')
+    }
+  }
+
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<'ACTIVE' | 'READY' | 'ALL'>('ACTIVE')
@@ -67,6 +206,7 @@ export default function StaffKitchenPage() {
       return
     }
     fetchKitchenOrders()
+    fetchInventory()
     const timer = setInterval(fetchKitchenOrders, 5000)
     return () => clearInterval(timer)
   }, [user])
@@ -108,6 +248,7 @@ export default function StaffKitchenPage() {
       if (json.success) {
         showToast(`Order ${shortCode} updated to ${newStatus}`)
         fetchKitchenOrders()
+    fetchInventory()
       }
     } catch {}
   }
@@ -121,6 +262,7 @@ export default function StaffKitchenPage() {
         showToast(`🔥 New Live Order ${json.data.shortCode} placed!`)
         if (soundEnabled) playKitchenBell()
         fetchKitchenOrders()
+    fetchInventory()
       }
     } finally {
       setCreatingTest(false)
