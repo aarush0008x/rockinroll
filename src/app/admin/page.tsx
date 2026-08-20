@@ -8,7 +8,7 @@ import {
   DollarSign, ShoppingBag, Users, Shield, TrendingUp, RefreshCw,
   Plus, Edit, Trash2, CheckCircle, XCircle, Search, Flame,
   Check, AlertCircle, Sparkles, Filter, X, Layers, FolderPlus,
-  Truck, ChefHat, Clock, Phone, MapPin, Tag, Key, Globe, MessageSquare, Package, Activity, BarChart3, AlertTriangle,
+  Truck, ChefHat, Clock, Phone, MapPin, Tag, Key, Globe, MessageSquare, UploadCloud, Package, Activity, BarChart3, AlertTriangle,
   Send, Copy, HelpCircle, ExternalLink, Mail, CheckCheck, Smartphone, QrCode
 } from 'lucide-react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
@@ -38,6 +38,41 @@ export default function AdminDashboardPage() {
   const [testPhone, setTestPhone] = useState('')
   const [testingWhatsApp, setTestingWhatsApp] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [uploadingProdImage, setUploadingProdImage] = useState(false)
+  const [uploadingCatImage, setUploadingCatImage] = useState(false)
+
+  const handleAdminFileUpload = async (file: File, type: 'PRODUCT' | 'CATEGORY') => {
+    const isProd = type === 'PRODUCT'
+    if (isProd) setUploadingProdImage(true)
+    else setUploadingCatImage(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json()
+
+      if (json.success && json.url) {
+        if (isProd) {
+          setProdForm((prev) => ({ ...prev, imageUrl: json.url }))
+        } else {
+          setCategoryForm((prev) => ({ ...prev, imageUrl: json.url }))
+        }
+        showNotification('success', 'Image uploaded successfully!')
+      } else {
+        showNotification('error', json.error || 'Failed to upload image')
+      }
+    } catch {
+      showNotification('error', 'Error uploading image')
+    } finally {
+      if (isProd) setUploadingProdImage(false)
+      else setUploadingCatImage(false)
+    }
+  }
 
   const copyToClipboard = (text: string, keyName: string) => {
     navigator.clipboard.writeText(text)
@@ -2228,6 +2263,229 @@ export default function AdminDashboardPage() {
                   Save Coupon
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* MODAL: ADD / EDIT PRODUCT */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {showAddProductModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+              <h3 className="text-xl font-black text-[#22092C]">
+                {editingProduct ? `Edit ${editingProduct.name}` : 'Add New Kathi Roll'}
+              </h3>
+              <button
+                onClick={() => setShowAddProductModal(false)}
+                className="p-2 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProduct} className="space-y-4 text-xs">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Product Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Classic Smoked Chicken Roll"
+                    value={prodForm.name}
+                    onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Category *</label>
+                  <select
+                    required
+                    value={prodForm.categoryId}
+                    onChange={(e) => setProdForm({ ...prodForm, categoryId: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-bold text-[#1A1A1A]"
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Description *</label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Describe the flavors, spices, flatbread, and signature chutneys..."
+                  value={prodForm.description}
+                  onChange={(e) => setProdForm({ ...prodForm, description: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-neutral-300 focus:ring-[#BE3144] text-[#1A1A1A]"
+                />
+              </div>
+
+              {/* 📸 Click-to-Upload & Camera Upload Box */}
+              <div className="space-y-2">
+                <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Kathi Roll Photo / Image</label>
+                
+                {prodForm.imageUrl ? (
+                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-neutral-200 group">
+                    <img src={prodForm.imageUrl} alt="Product preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setProdForm({ ...prodForm, imageUrl: '' })}
+                      className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-xl shadow hover:bg-red-700 transition-colors"
+                      title="Remove image"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-neutral-300 hover:border-[#BE3144] rounded-2xl bg-[#FFF8F5]/60 hover:bg-[#FFF8F5] cursor-pointer transition-colors text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleAdminFileUpload(file, 'PRODUCT')
+                      }}
+                      className="hidden"
+                    />
+                    <UploadCloud className="w-6 h-6 text-[#BE3144] mb-1" />
+                    <p className="text-xs font-bold text-[#22092C]">
+                      {uploadingProdImage ? 'Uploading image...' : 'Click to upload Kathi roll photo from device or camera'}
+                    </p>
+                    <p className="text-[10px] text-neutral-400">Supports JPG, PNG, WEBP</p>
+                  </label>
+                )}
+
+                <input
+                  type="url"
+                  placeholder="Or paste direct image URL (https://...)"
+                  value={prodForm.imageUrl}
+                  onChange={(e) => setProdForm({ ...prodForm, imageUrl: e.target.value })}
+                  className="w-full p-2.5 text-[11px] rounded-xl border border-neutral-300 focus:ring-[#BE3144] font-mono text-[#1A1A1A]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={prodForm.price}
+                    onChange={(e) => setProdForm({ ...prodForm, price: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-black text-[#22092C]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Discount Price (₹)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="Optional"
+                    value={prodForm.discountPrice}
+                    onChange={(e) => setProdForm({ ...prodForm, discountPrice: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-bold text-[#1A1A1A]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Dietary Type</label>
+                  <select
+                    value={prodForm.isVeg ? 'VEG' : 'NON_VEG'}
+                    onChange={(e) => setProdForm({ ...prodForm, isVeg: e.target.value === 'VEG' })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-bold text-[#1A1A1A]"
+                  >
+                    <option value="VEG">🟢 100% Pure Veg</option>
+                    <option value="NON_VEG">🔴 Non-Veg / Chicken</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-extrabold text-neutral-700 uppercase text-[11px]">Spice Level</label>
+                  <select
+                    value={prodForm.spiceLevel}
+                    onChange={(e) => setProdForm({ ...prodForm, spiceLevel: parseInt(e.target.value) || 1 })}
+                    className="w-full p-2.5 rounded-xl border border-neutral-300 font-bold text-[#1A1A1A]"
+                  >
+                    <option value={1}>Mild 🌶️</option>
+                    <option value={2}>Medium 🌶️🌶️</option>
+                    <option value={3}>Fiery Hot 🌶️🌶️🌶️</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                <label className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={prodForm.isAvailable}
+                    onChange={(e) => setProdForm({ ...prodForm, isAvailable: e.target.checked })}
+                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
+                  />
+                  <span className="font-bold text-xs text-[#22092C]">In Stock</span>
+                </label>
+
+                <label className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={prodForm.isBestSeller}
+                    onChange={(e) => setProdForm({ ...prodForm, isBestSeller: e.target.checked })}
+                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
+                  />
+                  <span className="font-bold text-xs text-[#22092C]">Bestseller ⭐</span>
+                </label>
+
+                <label className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={prodForm.isFeatured}
+                    onChange={(e) => setProdForm({ ...prodForm, isFeatured: e.target.checked })}
+                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
+                  />
+                  <span className="font-bold text-xs text-[#22092C]">Featured ✨</span>
+                </label>
+
+                <label className="flex items-center gap-2 p-3 bg-neutral-50 rounded-xl border border-neutral-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={prodForm.isNewItem}
+                    onChange={(e) => setProdForm({ ...prodForm, isNewItem: e.target.checked })}
+                    className="rounded text-[#BE3144] focus:ring-[#BE3144]"
+                  />
+                  <span className="font-bold text-xs text-[#22092C]">New Item 🔥</span>
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddProductModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-neutral-300 font-bold hover:bg-neutral-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploadingProdImage}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50"
+                >
+                  {editingProduct ? 'Update Kathi Roll' : 'Create Kathi Roll'}
+                </button>
+              </div>
+
             </form>
           </div>
         </div>

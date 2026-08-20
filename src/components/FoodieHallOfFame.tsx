@@ -1,9 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Star, Camera, CheckCircle2, Sparkles, Plus, X, Heart, MessageSquare } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Star, Camera, CheckCircle2, Sparkles, Plus, X, UploadCloud, ImageIcon, Trash2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
 interface ReviewItem {
@@ -24,7 +22,10 @@ export function FoodieHallOfFame() {
   const [loading, setLoading] = useState(true)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     productId: '',
@@ -43,42 +44,8 @@ export function FoodieHallOfFame() {
       setLoading(true)
       const res = await fetch('/api/reviews?photos=true')
       const json = await res.json()
-      if (json.success && json.data.length > 0) {
-        setReviews(json.data)
-      } else {
-        // Sample authentic foodie community reviews if DB is fresh
-        setReviews([
-          {
-            id: 'sample-1',
-            rating: 5,
-            comment: 'Crispy whole-wheat paratha, extra juicy smoked chicken tikka and fiery kasundi mayo! Arrived piping hot in 22 mins.',
-            imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=600&auto=format&fit=crop&q=80',
-            pointsAwarded: true,
-            createdAt: '2 hours ago',
-            user: { name: 'Aarav Sharma' },
-            product: { name: 'Classic Smoked Chicken Kathi Roll' },
-          },
-          {
-            id: 'sample-2',
-            rating: 5,
-            comment: 'The Truffle Paneer Roll is unbeatable! Melt-in-mouth cottage cheese with melted cheese strings. Loved the packaging too!',
-            imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80',
-            pointsAwarded: true,
-            createdAt: '5 hours ago',
-            user: { name: 'Simran Kaur' },
-            product: { name: 'Truffle Butter Paneer Kathi Roll' },
-          },
-          {
-            id: 'sample-3',
-            rating: 5,
-            comment: 'CGC campus midnight craving sorted! Double egg bhurji with tandoori spices is my regular exam night fuel.',
-            imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80',
-            pointsAwarded: true,
-            createdAt: 'Yesterday',
-            user: { name: 'Rohan Verma' },
-            product: { name: 'Double Egg Masala Roll' },
-          },
-        ])
+      if (json.success) {
+        setReviews(json.data || [])
       }
     } finally {
       setLoading(false)
@@ -89,11 +56,38 @@ export function FoodieHallOfFame() {
     try {
       const res = await fetch('/api/menu/products')
       const json = await res.json()
-      if (json.success) {
+      if (json.success && json.data.length > 0) {
         setProducts(json.data)
-        if (json.data.length > 0) setForm((f) => ({ ...f, productId: json.data[0].id }))
+        setForm((f) => ({ ...f, productId: json.data[0].id }))
       }
     } catch {}
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingImage(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json()
+
+      if (json.success && json.url) {
+        setForm((prev) => ({ ...prev, imageUrl: json.url }))
+      } else {
+        alert(json.error || 'Failed to upload photo')
+      }
+    } catch {
+      alert('Error uploading photo')
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -147,7 +141,7 @@ export function FoodieHallOfFame() {
             Foodie Hall of Fame 📸
           </h2>
           <p className="text-xs sm:text-sm text-neutral-600 max-w-xl">
-            Real photos from real Kathi roll fanatics. Upload your roll unboxing photo after delivery to earn{' '}
+            Real photos from verified Kathi roll lovers. Upload your unboxing or bite photo after delivery to claim{' '}
             <strong className="text-[#BE3144] font-black">+5 Bonus RollPoints</strong> on every review!
           </p>
         </div>
@@ -160,73 +154,95 @@ export function FoodieHallOfFame() {
         </button>
       </div>
 
-      {/* Review Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {reviews.map((r) => (
-          <div
-            key={r.id}
-            className="group bg-white rounded-3xl overflow-hidden border border-neutral-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
-          >
-            {/* Photo */}
-            <div className="relative aspect-4/3 w-full bg-neutral-100 overflow-hidden">
-              {r.imageUrl ? (
-                <img
-                  src={r.imageUrl}
-                  alt={r.product?.name || 'Kathi Roll'}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-4xl">🌯</div>
-              )}
-
-              {/* Bonus points badge */}
-              {r.pointsAwarded && (
-                <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-amber-300 font-extrabold text-[10px] flex items-center gap-1 border border-amber-400/40">
-                  <Sparkles className="w-3 h-3 text-amber-400" /> +5 RollPoints
-                </div>
-              )}
-
-              {/* Product tag */}
-              <div className="absolute bottom-3 left-3 right-3">
-                <span className="px-3 py-1 rounded-xl bg-white/90 backdrop-blur-md text-[#22092C] font-black text-[11px] shadow-sm truncate block max-w-max">
-                  {r.product?.name}
-                </span>
-              </div>
-            </div>
-
-            {/* Review Content */}
-            <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-              <div className="space-y-2">
-                {/* Rating Stars */}
-                <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-3.5 h-3.5 ${
-                        i < r.rating ? 'fill-amber-400 text-amber-400' : 'text-neutral-200'
-                      }`}
-                    />
-                  ))}
-                  <span className="text-[11px] font-black text-neutral-800 ml-1.5">{r.rating}.0</span>
-                </div>
-
-                <p className="text-xs text-neutral-700 leading-relaxed line-clamp-3 italic">
-                  "{r.comment}"
-                </p>
-              </div>
-
-              {/* Author info */}
-              <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1.5 font-bold text-[#22092C]">
-                  <span>{r.user?.name || 'Verified Foodie'}</span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                </div>
-                <span className="text-neutral-400 text-[10px]">{r.createdAt}</span>
-              </div>
-            </div>
+      {/* Real Reviews Grid or Clean Empty State */}
+      {loading ? (
+        <div className="p-12 text-center text-xs text-neutral-400">Loading community gallery...</div>
+      ) : reviews.length === 0 ? (
+        <div className="p-12 rounded-3xl bg-white border border-neutral-200/80 shadow-sm text-center space-y-4 max-w-md mx-auto">
+          <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-[#BE3144]/10 to-[#F05941]/10 text-[#BE3144] flex items-center justify-center mx-auto text-2xl shadow-inner">
+            📸
           </div>
-        ))}
-      </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-black text-[#22092C]">Be the First in the Hall of Fame!</h3>
+            <p className="text-xs text-neutral-500">
+              Ordered a roll? Upload your hot roll photo to receive <strong>+5 bonus RollPoints</strong> added to your profile instantly!
+            </p>
+          </div>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="px-5 py-2.5 rounded-xl bg-[#22092C] hover:bg-[#872341] text-white text-xs font-bold transition-colors"
+          >
+            Post First Photo Review
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {reviews.map((r) => (
+            <div
+              key={r.id}
+              className="group bg-white rounded-3xl overflow-hidden border border-neutral-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col"
+            >
+              {/* Photo */}
+              <div className="relative aspect-4/3 w-full bg-neutral-100 overflow-hidden">
+                {r.imageUrl ? (
+                  <img
+                    src={r.imageUrl}
+                    alt={r.product?.name || 'Kathi Roll'}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl">🌯</div>
+                )}
+
+                {/* Bonus points badge */}
+                {r.pointsAwarded && (
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-amber-300 font-extrabold text-[10px] flex items-center gap-1 border border-amber-400/40">
+                    <Sparkles className="w-3 h-3 text-amber-400" /> +5 RollPoints
+                  </div>
+                )}
+
+                {/* Product tag */}
+                <div className="absolute bottom-3 left-3 right-3">
+                  <span className="px-3 py-1 rounded-xl bg-white/90 backdrop-blur-md text-[#22092C] font-black text-[11px] shadow-sm truncate block max-w-max">
+                    {r.product?.name}
+                  </span>
+                </div>
+              </div>
+
+              {/* Review Content */}
+              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                <div className="space-y-2">
+                  {/* Rating Stars */}
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-3.5 h-3.5 ${
+                          i < r.rating ? 'fill-amber-400 text-amber-400' : 'text-neutral-200'
+                        }`}
+                      />
+                    ))}
+                    <span className="text-[11px] font-black text-neutral-800 ml-1.5">{r.rating}.0</span>
+                  </div>
+
+                  <p className="text-xs text-neutral-700 leading-relaxed line-clamp-3 italic">
+                    "{r.comment}"
+                  </p>
+                </div>
+
+                {/* Author info */}
+                <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 font-bold text-[#22092C]">
+                    <span>{r.user?.name || 'Verified Foodie'}</span>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                  <span className="text-neutral-400 text-[10px]">{new Date(r.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Upload Review Modal */}
       {showUploadModal && (
@@ -240,7 +256,7 @@ export function FoodieHallOfFame() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-[#22092C]">Upload Photo Review</h3>
-                  <p className="text-[11px] text-neutral-500">Earn +5 bonus RollPoints instantly</p>
+                  <p className="text-[11px] text-neutral-500">Earn +5 bonus RollPoints automatically</p>
                 </div>
               </div>
               <button
@@ -290,21 +306,51 @@ export function FoodieHallOfFame() {
                 </div>
               </div>
 
-              <div className="space-y-1">
+              {/* 📸 Direct Click-to-Upload & Camera Picker */}
+              <div className="space-y-1.5">
                 <label className="font-extrabold text-neutral-700 uppercase text-[11px]">
-                  Photo Image URL (Unboxing / Bite Shot)
+                  Upload Kathi Roll Photo (+5 Points)
                 </label>
+                
                 <input
-                  type="url"
-                  required
-                  placeholder="https://images.unsplash.com/... or paste image link"
-                  value={form.imageUrl}
-                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                  className="w-full p-3 rounded-xl border border-neutral-300 font-mono text-xs text-[#1A1A1A] focus:ring-[#BE3144]"
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
                 />
-                <p className="text-[10px] text-neutral-500">
-                  💡 Tip: Uploading a photo qualifies you for the <strong>+5 bonus RollPoints</strong> reward!
-                </p>
+
+                {form.imageUrl ? (
+                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden border-2 border-emerald-500 group">
+                    <img src={form.imageUrl} alt="Review upload" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, imageUrl: '' })}
+                      className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 transition-colors"
+                      title="Remove image"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-2 left-2 px-3 py-1 bg-black/70 backdrop-blur-md rounded-lg text-white font-bold text-[10px] flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Photo Uploaded
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-6 border-2 border-dashed border-neutral-300 hover:border-[#BE3144] rounded-2xl bg-[#FFF8F5]/60 hover:bg-[#FFF8F5] transition-colors cursor-pointer text-center space-y-2"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#BE3144]/10 text-[#BE3144] flex items-center justify-center mx-auto">
+                      <UploadCloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-extrabold text-[#22092C]">
+                        {uploadingImage ? 'Uploading image...' : 'Click to upload from device or camera'}
+                      </p>
+                      <p className="text-[10px] text-neutral-500">Supports JPG, PNG, WEBP from your phone or gallery</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -322,7 +368,7 @@ export function FoodieHallOfFame() {
               <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center gap-2.5 text-amber-950">
                 <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0" />
                 <p className="text-[11px]">
-                  <strong>Reward:</strong> Upon submission, <strong>5 RollPoints</strong> will be automatically credited to your balance!
+                  <strong>Reward:</strong> <strong>+5 RollPoints</strong> will be automatically credited to your balance upon submission!
                 </p>
               </div>
 
@@ -336,7 +382,7 @@ export function FoodieHallOfFame() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || uploadingImage}
                   className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#BE3144] to-[#F05941] text-white font-black shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50"
                 >
                   {submitting ? 'Submitting...' : 'Post Review & Claim +5 Pts'}
