@@ -76,6 +76,14 @@ export function Footer() {
             >
               Aarush
             </a>
+            <a
+              href="https://www.linkedin.com/in/renuka-saini-365679393"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#F05941] hover:text-white font-bold underline underline-offset-2 transition-colors"
+            >
+              Renuka
+            </a>
           </p>
         </div>
       </div>
