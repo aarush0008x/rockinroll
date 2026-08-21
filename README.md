@@ -66,6 +66,6 @@ Open [http://localhost:3005](http://localhost:3005) in your browser.
 - **Location**: CGC university, Mohali
 - **Phone**: +91 95017 14559
 - **Email**: support@rockinroll.in
-- **Hours**: Open Daily 11:00 AM – 11:00 PM
+- **Hours**: Open Daily 11:00 AM – 11:00 PM<br>
 In Collab With [Renuka](https://github.com/Renuka-wq) <br>
 
